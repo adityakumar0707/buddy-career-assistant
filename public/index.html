@@ -97,7 +97,7 @@ a{color:var(--primary-dark)}
 .tcard b{display:block;font-size:14px}.tcard span{font-size:12px;color:var(--muted)}
 footer{margin:36px 0 48px;color:var(--muted);font-size:13px;text-align:center}
 /* overlays */
-.ov{position:fixed;inset:0;background:rgba(25,10,40,.45);z-index:50;display:flex;justify-content:flex-end}
+.ov{position:fixed;inset:0;background:rgba(25,10,40,.45);z-index:70;display:flex;justify-content:flex-end}
 .sheet{background:var(--bg);width:min(640px,100%);height:100%;overflow:auto;display:flex;flex-direction:column}
 .sheet.mid{margin:auto;height:auto;max-height:92vh;border-radius:20px;width:min(520px,calc(100% - 24px))}
 .ov.mid{justify-content:center;align-items:center}
@@ -155,7 +155,8 @@ textarea.field{min-height:140px;resize:vertical}
 .panel{position:fixed;right:20px;bottom:84px;width:380px;max-width:calc(100vw - 24px);height:min(520px,calc(100vh - 110px));background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(25,10,40,.28);display:flex;flex-direction:column;z-index:41;overflow:hidden}
 .panel .ph{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
 .panel .msgs{padding:14px 16px}
-.panel .cchips{padding:0 16px 8px;max-height:112px;overflow:auto}
+.panel .cchips{padding:0 16px 8px;max-height:84px;overflow:auto;gap:6px}
+.panel .chip{padding:6px 12px;font-size:13px}
 .panel .cinput{padding:10px 12px}
 .mini{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--bg);font-size:13px}
 .mini b{display:block;font-size:13px}.mini span{color:var(--muted)}
@@ -166,6 +167,15 @@ textarea.field{min-height:140px;resize:vertical}
 .nudge .chips{margin:10px 0 8px;gap:6px}
 .nudge .chip{padding:6px 12px;font-size:13px}
 .nudge .nx{position:absolute;right:10px;top:10px;border:0;background:none;color:var(--muted);width:24px;height:24px}
+.panel .ph .grow{display:flex;gap:8px;align-items:center}
+.xl{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
+.panel.full{position:fixed;inset:0;right:0;bottom:0;left:0;width:100%;max-width:none;height:100%;border-radius:0;border:0;box-shadow:none;z-index:60}
+.panel.full .ph{padding:14px max(16px,calc((100% - 760px) / 2))}
+.panel.full .msgs{padding:18px max(16px,calc((100% - 760px) / 2))}
+.panel.full .cchips{padding:0 max(16px,calc((100% - 760px) / 2)) 10px}
+.panel.full .cinput{padding:12px max(16px,calc((100% - 760px) / 2)) 18px}
+.panel.full .m{font-size:16px;max-width:80%}
+#dock.isfull .launch,#dock.isfull .nudge{display:none}
 @keyframes pop{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 @media (max-width:760px){.panel{right:8px;left:8px;width:auto;max-width:none;bottom:76px;height:min(70vh,560px)}.launch{right:12px;bottom:12px}.nudge{right:12px;bottom:76px}}
 </style>
@@ -189,7 +199,7 @@ var tab = 'home';
 var ovStack = [];
 
 function fresh() {
-  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatQ: '', chatAsked: 0, chatShown: false, skipQ: [], nudgeNo: 0, custom: [], customKey: '', gmail: false, cacheKey: '' };
+  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatQ: '', chatAsked: 0, chatShown: false, listAt: 0, skipQ: [], nudgeNo: 0, custom: [], customKey: '', gmail: false, cacheKey: '' };
 }
 function load() { try { var j = JSON.parse(localStorage.getItem(KEY)); return j && j.p ? Object.assign(fresh(), j) : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
@@ -362,9 +372,9 @@ function bind() {
   };
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); render(); window.scrollTo(0, 0); }; });
   if ((el = $('reset'))) el.onclick = function () { if (confirm('Start over? Your saved colleges and drafts in this browser will be cleared.')) reset(); };
-  if ((el = $('orb'))) el.onclick = function () { openChat(); };
-  if ((el = $('ask'))) el.onclick = function () { openChat(); };
-  document.querySelectorAll('[data-pr]').forEach(function (b) { b.onclick = function () { openChat(b.getAttribute('data-pr')); }; });
+  if ((el = $('orb'))) el.onclick = function () { openChat(undefined, true); };
+  if ((el = $('ask'))) el.onclick = function () { openChat(undefined, true); };
+  document.querySelectorAll('[data-pr]').forEach(function (b) { b.onclick = function () { openChat(b.getAttribute('data-pr'), true); }; });
   document.querySelectorAll('[data-retry]').forEach(function (b) { b.onclick = function () { customState = ''; ensureCustom(); }; });
   document.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
   document.querySelectorAll('[data-int]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); toggleInt(b.getAttribute('data-int')); }; });
@@ -577,10 +587,23 @@ var PKEY = { intake: 'intake', budget: 'budget', marks: 'marks', tests: 'tests',
 function qOf(id) { return QBANK.filter(function (q) { return q.id === id; })[0]; }
 function answered(q) { return !!S.p[PKEY[q.id]] || S.skipQ.indexOf(q.id) >= 0; }
 function nextQ(skipId) { return QBANK.filter(function (q) { return !answered(q) && q.id !== skipId; })[0]; }
-function answerQ(id, val) {
+var VAGUE = ['Skip', 'Not sure yet', 'Not taken yet'];
+function specificCount() { return QBANK.filter(function (q) { var v = S.p[PKEY[q.id]]; return v && VAGUE.indexOf(v) < 0; }).length; }
+function pushList() {
+  var n = specificCount(), t = [3, 5, 6].filter(function (x) { return x <= n && x > S.listAt; }).pop();
+  if (!t) return false;
+  var ids = topIds(5); if (!ids.length) return false;
+  S.listAt = t;
+  if (!S.chat.length) S.chat.push({ role: 'assistant', content: 'Hi ' + first() + '.' });
+  S.chat.push({ role: 'assistant', content: 'You gave me ' + n + ' clear answers, so I made a list for you. These ' + ids.length + ' fit you best right now. Your rows on Home are sorted the same way. Open one to see why it fits.', ids: ids });
+  return true;
+}
+function answerQ(id, val, quiet) {
   var q = qOf(id);
   if (val === 'Skip') { if (S.skipQ.indexOf(id) < 0) S.skipQ.push(id); } else q.set(val);
+  var made = quiet ? false : pushList();
   save(); if (S.step === 'main' && tab === 'home') softRender();
+  if (made) { if (chatOpen) chatPaint(); else showListNudge(); }
 }
 function topIds(n) {
   var rows = rowsNow(), out = [];
@@ -606,17 +629,24 @@ var chatOpen = false, busy = false, nudgeQ = '', lastNudge = Date.now() - 22000,
 function dockOn() {
   var dk = $('dock'); if (dk.firstChild) return;
   dk.innerHTML = '<div id="nudge" class="nudge hide"></div>' +
-    '<div id="panel" class="panel hide"><div class="ph"><span class="logo"><i></i>Buddy</span><button class="x" id="pc" aria-label="Close chat">x</button></div><div class="msgs" id="ms"></div><div class="cchips" id="cc"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="400"><button class="btn" id="cs">Send</button></div></div>' +
+    '<div id="panel" class="panel hide"><div class="ph"><span class="logo"><i></i>Buddy</span><span class="grow"><button class="xl" id="pe">Full screen</button><button class="x" id="pc" aria-label="Close chat">x</button></span></div><div class="msgs" id="ms"></div><div class="cchips" id="cc"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="400"><button class="btn" id="cs">Send</button></div></div>' +
     '<button class="launch" id="launch"><i></i><span>Ask Buddy</span></button>';
   $('launch').onclick = function () { if (chatOpen) closeChat(); else openChat(); };
   $('pc').onclick = closeChat;
+  $('pe').onclick = function () { setFull(!$('panel').classList.contains('full')); };
   $('cs').onclick = function () { var ci = $('ci'), v = ci.value.trim(); if (v) { ci.value = ''; userSays(v); } };
   $('ci').onkeydown = function (e) { if (e.key === 'Enter') $('cs').click(); };
 }
-function dockOff() { $('dock').innerHTML = ''; chatOpen = false; nudgeQ = ''; }
-function closeChat() { chatOpen = false; $('panel').classList.add('hide'); }
-function openChat(prefill) {
-  dockOn(); chatOpen = true; hideNudge(); $('panel').classList.remove('hide');
+function dockOff() { $('dock').innerHTML = ''; $('dock').className = ''; chatOpen = false; nudgeQ = ''; }
+function setFull(on) {
+  var pn = $('panel'); if (!pn) return;
+  pn.classList.toggle('full', !!on); $('dock').classList.toggle('isfull', !!on); $('pe').textContent = on ? 'Shrink' : 'Full screen';
+  document.body.style.overflow = on ? 'hidden' : ($('ovs').children.length ? 'hidden' : '');
+  var ms = $('ms'); if (ms) ms.scrollTop = ms.scrollHeight;
+}
+function closeChat() { chatOpen = false; setFull(false); $('panel').classList.add('hide'); }
+function openChat(prefill, full) {
+  dockOn(); chatOpen = true; hideNudge(); $('panel').classList.remove('hide'); setFull(!!full);
   if (!S.chat.length) { S.chat.push({ role: 'assistant', content: 'Hi ' + first() + '. Three quick taps first, so your lists fit you.' }); chatNext(); }
   else chatPaint();
   if (prefill) userSays(prefill); else setTimeout(function () { var ci = $('ci'); if (ci && window.innerWidth > 760) ci.focus(); }, 50);
@@ -624,7 +654,7 @@ function openChat(prefill) {
 function chatNext() {
   var nq = nextQ();
   if (S.chatAsked < 3 && nq) { S.chatAsked++; S.chatQ = nq.id; S.chat.push({ role: 'assistant', content: nq.q }); }
-  else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; S.chat.push({ role: 'assistant', content: 'Thanks. Here are three that fit you so far. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(3) }); } }
+  else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; if (!pushList()) S.chat.push({ role: 'assistant', content: 'Thanks. Here are three to start with. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(3) }); } }
   save(); chatPaint();
 }
 function chatPaint() {
@@ -641,7 +671,7 @@ function chatPaint() {
   $('cc').querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-o'); if (S.chatQ) chipAnswer(v); else userSays(v); }; });
 }
 function chipAnswer(v) {
-  var id = S.chatQ; S.chat.push({ role: 'user', content: v }); answerQ(id, v); chatNext();
+  var id = S.chatQ; S.chat.push({ role: 'user', content: v }); answerQ(id, v, true); chatNext();
 }
 function userSays(text) {
   if (busy) return;
@@ -649,8 +679,8 @@ function userSays(text) {
   var st = staticAnswer(text);
   if (st) { S.chat.push({ role: 'assistant', content: st }); save(); return chatPaint(); }
   busy = true; save(); chatPaint();
-  var msgs = S.chat.filter(function (m) { return !m.ids; }).slice(-4).map(function (m) { return { role: m.role, content: m.content }; });
-  api('chat', { profile: S.p, notInterested: notNames(), messages: msgs }).then(function (r) {
+  var msgs = S.chat.filter(function (m) { return !m.ids; }).slice(-6).map(function (m) { return { role: m.role, content: m.content }; });
+  api('chat', { profile: S.p, notInterested: notNames(), colleges: topIds(8).map(function (id) { var p = P(id); return { name: p.program + ', ' + p.university + ', ' + p.country, note: p.reason || reasonOf(p, S.p) }; }), messages: msgs }).then(function (r) {
     S.chat.push({ role: 'assistant', content: r.text }); busy = false; save(); chatPaint();
   }).catch(function (e) { S.chat.push({ role: 'assistant', content: e.message + ' You can send your message again.' }); busy = false; save(); chatPaint(); });
 }
@@ -663,6 +693,14 @@ function showNudge(q) {
   n.classList.remove('hide');
   n.querySelectorAll('[data-nv]').forEach(function (b) { b.onclick = function () { var id = nudgeQ; hideNudge(); answerQ(id, b.getAttribute('data-nv')); lastNudge = Date.now(); toast('Lists updated'); }; });
   $('nclose').onclick = function () { S.nudgeNo++; save(); hideNudge(); lastNudge = Date.now(); };
+}
+function showListNudge() {
+  var n = $('nudge'); if (!n) return;
+  nudgeQ = 'list'; lastNudge = Date.now();
+  n.innerHTML = '<button class="nx" id="nclose" aria-label="Close">x</button><b>Buddy</b><div class="nq">Your list is ready, made from your answers.</div><div class="chips"><button class="chip" id="nlist">See my list</button></div>';
+  n.classList.remove('hide');
+  $('nlist').onclick = function () { hideNudge(); openChat(undefined, true); };
+  $('nclose').onclick = function () { hideNudge(); };
 }
 function nudgeCheck() {
   if (S.step !== 'main' || tab !== 'home' || chatOpen || nudgeQ || $('ovs').children.length || S.nudgeNo >= 3 || !$('nudge')) return;

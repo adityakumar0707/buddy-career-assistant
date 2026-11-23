@@ -68,7 +68,8 @@ function profileOf(p) {
     workYears: str(p.workYears, 30),
     budgetOn: !!p.budgetOn,
     budgetLakh: Number(p.budgetLakh) || 0,
-    priority: str(p.priority, 40)
+    priority: str(p.priority, 40),
+    budget: str(p.budget, 30)
   };
 }
 function profileText(p) {

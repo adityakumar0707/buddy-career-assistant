@@ -41,10 +41,11 @@ with sync_playwright() as p:
     pg.evaluate("document.getElementById('ovs').innerHTML=''")
     pg.click("[data-tab=home]")
     # chat: taps first, then cards, rows resort without api
-    pg.click("#launch"); pg.wait_for_selector(".panel .m.b")
+    pg.click("#ask"); pg.wait_for_selector(".panel.full .m.b"); print("hero opens full screen:", pg.evaluate("document.getElementById('panel').getBoundingClientRect().width>=window.innerWidth-2"))
+    pg.click("#pe"); pg.wait_for_timeout(200); print("shrunk popup:", pg.evaluate("document.getElementById('panel').getBoundingClientRect().width<500"))
     for opt in ["Fall 2027","Under 15 lakh","Above 80%"]:
         pg.click(f".panel .chip:has-text('{opt}')"); pg.wait_for_timeout(200)
-    pg.wait_for_selector(".mini"); print("mini cards:",pg.locator(".mini").count())
+    pg.wait_for_selector(".mini"); print("mini cards:",pg.locator(".mini").count(), "list msg:", "made a list" in pg.inner_text(".msgs"))
     pg.click(".panel .chip:has-text('How do I pick')"); pg.wait_for_timeout(200)
     assert "four things" in pg.inner_text(".msgs")
     pg.fill("#ci","Can I study Law in Canada with a gap year?"); pg.press("#ci","Enter"); pg.wait_for_timeout(1200)
