@@ -24,6 +24,6 @@ module.exports = route(async function (body) {
   const messages = msgs.slice();
   messages[0] = { role: 'user', content: context + '\n\nCONVERSATION STARTS:\n' + messages[0].content };
 
-  const out = await generate({ system, messages, search: true, temperature: 0.5, maxTokens: 1500, timeoutMs: 45000 });
+  const out = await generate({ system, messages, search: true, temperature: 0.5, maxTokens: 4000, timeoutMs: 45000 });
   return { text: out.text.slice(0, 1800), sources: out.sources.slice(0, 4) };
 });

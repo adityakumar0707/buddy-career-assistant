@@ -2,7 +2,9 @@
 const http=require('http');
 http.createServer((req,res)=>{
   let b='';req.on('data',c=>b+=c);req.on('end',()=>{
-    let t='';try{const j=JSON.parse(b);t=JSON.stringify(j.contents)+JSON.stringify(j.systemInstruction||'')}catch(e){}
+    let t='',inter=/\/interactions/.test(req.url),j={};try{j=JSON.parse(b);t=JSON.stringify(j.contents||j.input)+JSON.stringify(j.systemInstruction||j.system_instruction||'')}catch(e){}
+    if(process.env.MOCK_NO_INTERACTIONS&&inter){res.statusCode=404;return res.end(JSON.stringify({error:{message:'not found'}}))}
+    if(inter&&(j.model!=='gemini-4-hydrogen'||req.headers['api-revision']!=='2026-05-20'||!req.headers['x-goog-api-key']||j.generation_config===undefined)){res.statusCode=400;return res.end(JSON.stringify({error:{message:'bad request shape'}}))}
     let out='ok';
     if(/Suggest \d+ postgraduate programs/.test(t)){
       const law=/in Law|Law\b/.test(t);
@@ -21,7 +23,7 @@ http.createServer((req,res)=>{
       out='What worked:\n- Clear\n- Honest\n\nTo improve:\n- Add a number\n- Shorter\n\nTry this opening: I built it myself.';
     } else if(/Reply with the single word/.test(t)){ out='ready'; }
     else { out='Here is a short answer. Open the Shortlist tab for more. — test'; }
-    const body=JSON.stringify({candidates:[{content:{parts:[{text:out}]},groundingMetadata:{groundingChunks:[{web:{title:'Src',uri:'https://example.edu/s'}}]}}]});
+    const body=inter?JSON.stringify({id:'v1_x',status:'completed',steps:[{type:'thought',signature:'x'},{type:'model_output',content:[{type:'text',text:out,annotations:[{type:'url_citation',title:'Src',url:'https://example.edu/s'}]}]}]}):JSON.stringify({candidates:[{content:{parts:[{text:out}]},groundingMetadata:{groundingChunks:[{web:{title:'Src',uri:'https://example.edu/s'}}]}}]});
     setTimeout(()=>{res.setHeader('Content-Type','application/json');res.end(body)},300);
   });
 }).listen(4010,()=>console.log('mock on 4010'));

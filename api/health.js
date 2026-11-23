@@ -10,7 +10,7 @@ module.exports = async function (req, res) {
   if (!live) out.hint = 'Key not found. Variable names that look related: ' + (Object.keys(process.env).filter(function (k) { return /GEM|GOOGLE|API|KEY/i.test(k); }).map(function (k) { return JSON.stringify(k); }).join(', ') || 'none');
   if (live && /check=1/.test(req.url || '')) {
     try {
-      const r = await generate({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], maxTokens: 400, timeoutMs: 25000 });
+      const r = await generate({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], maxTokens: 1500, timeoutMs: 25000 });
       out.check = 'working';
       out.reply = r.text.slice(0, 20);
     } catch (e) { out.check = 'failed'; out.error = String(e.message || '').slice(0, 200); }
