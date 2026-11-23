@@ -1,0 +1,10 @@
+{
+  "name": "buddy-career-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Buddy: an AI study abroad assistant. Static front end in /public, serverless functions in /api.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dev": "node server.js"
+  }
+}
