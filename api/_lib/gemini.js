@@ -2,7 +2,7 @@
 // Thin client for the Gemini API. The key stays on the server (process.env.GEMINI_API_KEY).
 // Supports both key types: AI Studio keys (AIza...) and Vertex express keys (AQ...).
 
-const KNOWN_MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+const KNOWN_MODELS = ['gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
 let workingModel = null;
 let workingProvider = null;
 

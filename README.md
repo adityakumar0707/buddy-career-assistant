@@ -15,7 +15,7 @@ AI study abroad assistant. Static front end in `public/`, serverless functions i
 6. In Vercel, Settings, Deployment Protection: set Vercel Authentication to Disabled so other people can open the link.
 
 ## If the check fails
-- `check: failed` with an error message: the key or model name is wrong. Set `GEMINI_MODEL` (for example `gemini-2.5-flash`) as an environment variable and redeploy.
+- `check: failed` with an error message: the key or model name is wrong. Set `GEMINI_MODEL` (for example `gemini-3.8-flash`) as an environment variable and redeploy.
 - Rows say "Try again": the research took longer than the function limit. Press Try again; results are cached after one success.
 
 ## Protecting the key
