@@ -138,7 +138,7 @@ textarea.field{min-height:140px;resize:vertical}
 .typing{display:inline-flex;gap:4px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bl 1.2s infinite}.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
 @keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .cinput{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--bg)}
-.cinput input{flex:1;border:1px solid var(--line);border-radius:999px;padding:12px 16px;background:#fff}
+.cinput input{min-width:0;flex:1;border:1px solid var(--line);border-radius:999px;padding:12px 16px;background:#fff}
 .cchips{padding:0 22px 8px;display:flex;flex-wrap:wrap;gap:8px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;z-index:90;font-size:14px;max-width:90%}
 @media (max-width:760px){
@@ -147,16 +147,39 @@ textarea.field{min-height:140px;resize:vertical}
  .pc,.sk{flex-basis:244px}.kv div{flex-direction:column;gap:2px}.kv b{flex-basis:auto}.card{padding:24px}
  .ap{flex-direction:column;align-items:flex-start}.sheet{width:100%}
 }
+
+/* dock */
+#dock{position:relative;z-index:40}
+.launch{position:fixed;right:20px;bottom:20px;z-index:41;display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:7px 18px 7px 7px;background:#fff;box-shadow:0 10px 34px rgba(25,10,40,.18);font-weight:600;color:var(--ink)}
+.launch i{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,#b9efdc 28%,var(--mint) 62%,var(--primary) 100%);display:block;animation:breathe 6s ease-in-out infinite}
+.panel{position:fixed;right:20px;bottom:84px;width:380px;max-width:calc(100vw - 24px);height:min(520px,calc(100vh - 110px));background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(25,10,40,.28);display:flex;flex-direction:column;z-index:41;overflow:hidden}
+.panel .ph{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.panel .msgs{padding:14px 16px}
+.panel .cchips{padding:0 16px 8px;max-height:112px;overflow:auto}
+.panel .cinput{padding:10px 12px}
+.mini{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--bg);font-size:13px}
+.mini b{display:block;font-size:13px}.mini span{color:var(--muted)}
+.mini:hover{border-color:var(--primary)}
+.nudge{position:fixed;right:20px;bottom:84px;width:300px;max-width:calc(100vw - 40px);background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;box-shadow:0 14px 44px rgba(25,10,40,.22);z-index:41;animation:pop .3s ease-out}
+.nudge b{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-dark)}
+.nudge .nq{font-weight:600;margin:2px 24px 0 0}
+.nudge .chips{margin:10px 0 8px;gap:6px}
+.nudge .chip{padding:6px 12px;font-size:13px}
+.nudge .nx{position:absolute;right:10px;top:10px;border:0;background:none;color:var(--muted);width:24px;height:24px}
+@keyframes pop{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@media (max-width:760px){.panel{right:8px;left:8px;width:auto;max-width:none;bottom:76px;height:min(70vh,560px)}.launch{right:12px;bottom:12px}.nudge{right:12px;bottom:76px}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="ovs"></div>
+<div id="dock"></div>
 <div id="toast" class="toast hide"></div>
+<script src="/catalogue.js"></script>
 <script>
 'use strict';
 /* ---------- state ---------- */
-var KEY = 'buddy_live_v1';
+var KEY = 'buddy_live_v2';
 var MAX_APPS = 8;
 var S = load() || fresh();
 var LIVE = true;            // set by /api/health
@@ -166,7 +189,7 @@ var tab = 'home';
 var ovStack = [];
 
 function fresh() {
-  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatStage: 0, gmail: false, cacheKey: '' };
+  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatQ: '', chatAsked: 0, chatShown: false, skipQ: [], nudgeNo: 0, custom: [], customKey: '', gmail: false, cacheKey: '' };
 }
 function load() { try { var j = JSON.parse(localStorage.getItem(KEY)); return j && j.p ? Object.assign(fresh(), j) : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
@@ -179,7 +202,7 @@ function safeUrl(u) { return /^https:\/\//i.test(u || '') ? u : ''; }
 function $(id) { return document.getElementById(id); }
 function toast(t) { var el = $('toast'); el.textContent = t; el.classList.remove('hide'); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.add('hide'); }, 2600); }
 function first() { return (S.name || '').trim().split(/\s+/)[0] || 'there'; }
-function pname(id) { var p = S.progs[id]; return p ? p.university + ' | ' + p.program : ''; }
+function pname(id) { var p = P(id); return p ? p.university + ' | ' + p.program : ''; }
 function download(name, text) {
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
@@ -231,7 +254,7 @@ function render() {
   else if (S.step === 'onboard') a.innerHTML = onboardV();
   else a.innerHTML = mainV();
   bind();
-  if (S.step === 'main') startRows(false);
+  if (S.step === 'main') { dockOn(); startRows(); } else dockOff();
 }
 function welcomeV() {
   return '<div class="center"><div class="card"><div class="logo" style="margin-bottom:18px"><i></i>Buddy</div>' +
@@ -273,40 +296,40 @@ function homeV() {
   var h = '<section class="hero"><div class="hero-grid"><button class="orb" id="orb" aria-label="Talk to Buddy"></button><div style="flex:1">' +
     '<h1>Hi ' + esc(first()) + '. Not sure where to begin?</h1><p>Tell Buddy what is on your mind. It can compare courses, explain a requirement, or help you choose between colleges.</p>' +
     '<div class="ask" id="ask"><span>Ask Buddy anything</span><button class="btn">Talk to Buddy</button></div>' +
-    '<div class="prompts">' + ['Which course suits my background?', 'How do I pick between two colleges?', 'What does a strong application need?'].map(function (x) { return '<button data-pr="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div></div></div></section>';
-  if (S.insight) h += '<div class="insight"><b>A quick note from Buddy.</b> ' + esc(S.insight) + '</div>';
+    '<div class="prompts">' + STARTERS.map(function (x) { return '<button data-pr="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div></div></div></section>';
   var used = {};
-  THEMES.forEach(function (t) {
-    var st = rowState[t.id], list = (S.rows[t.id] || []).filter(function (id) { return S.not.indexOf(id) < 0 && !used[id]; });
-    h += '<div class="sec"><h3>' + esc(t.title) + '</h3><p>' + esc(t.sub) + '</p>';
-    if (st === 'loading' && !list.length) h += '<div class="scroller">' + [1, 2, 3, 4].map(function () { return '<div class="sk"></div>'; }).join('') + '</div><div class="muted" style="font-size:13px">Buddy is picking programs for you. This takes a few seconds.</div>';
-    else if (st === 'err' && !list.length) h += '<div class="rowerr"><span>' + esc(rowErr[t.id] || 'Could not load this row.') + '</span><button class="btn sm" data-retry="' + t.id + '">Try again</button></div>';
-    else { list.forEach(function (id) { used[id] = 1; }); h += '<div class="scroller">' + list.map(cardV).join('') + '</div>'; if (!list.length) h += '<div class="muted">No programs here yet.</div>'; }
+  rowsNow().forEach(function (r) {
+    var list = r.ids.filter(function (id) { return S.not.indexOf(id) < 0 && !used[id] && P(id); });
+    if (!list.length && !r.llm) return;
+    h += '<div class="sec"><h3>' + esc(r.title) + '</h3><p>' + esc(r.sub) + '</p>';
+    if (r.llm && !list.length) {
+      if (customState === 'err') h += '<div class="rowerr"><span>' + esc(customErr || 'Could not load this row.') + '</span><button class="btn sm" data-retry="1">Try again</button></div>';
+      else h += '<div class="scroller">' + [1, 2, 3, 4].map(function () { return '<div class="sk"></div>'; }).join('') + '</div><div class="muted" style="font-size:13px">Buddy is finding programs for your course. This takes a few seconds.</div>';
+    } else { list.forEach(function (id) { used[id] = 1; }); h += '<div class="scroller">' + list.map(cardV).join('') + '</div>'; }
     h += '</div>';
   });
   h += '<div class="sec"><h3>Students like you</h3><p>Illustrative stories for this prototype</p><div class="tgrid">' + TESTIMONIALS.map(function (t) { return '<div class="tcard"><p>"' + esc(t.t) + '"</p><b>' + esc(t.n) + '</b><span>' + esc(t.r) + '</span></div>'; }).join('') + '</div></div>';
-  h += '<footer>Buddy checks official university pages. Always confirm deadlines on the college website before you apply.</footer>';
+  h += '<footer>Buddy checks official university pages when you ask it to. Always confirm deadlines on the college website before you apply.</footer>';
   return h;
 }
 function cardV(id) {
-  var p = S.progs[id]; if (!p) return '';
+  var p = P(id); if (!p) return '';
   var on = S.interested.indexOf(id) >= 0;
-  return '<div class="pc" data-open="' + id + '"><span class="tag">' + esc(p.country) + (p.city ? ' | ' + esc(p.city) : '') + '</span><h4>' + esc(p.program) + '</h4><div class="sub">' + esc(p.university) + '</div><div class="why">' + esc(p.reason) + '</div>' +
+  return '<div class="pc" data-open="' + id + '"><span class="tag">' + esc(p.country) + (p.city ? ' | ' + esc(p.city) : '') + '</span><h4>' + esc(p.program) + '</h4><div class="sub">' + esc(p.university) + '</div><div class="why">' + esc(p.reason || reasonOf(p, S.p)) + '</div>' +
     '<div class="acts"><button class="yes' + (on ? ' on' : '') + '" data-int="' + id + '">' + (on ? 'Saved' : 'Interested') + '</button><button class="no" data-not="' + id + '">Not interested</button></div></div>';
 }
 function savedV() {
   var h = '<div class="sec"><h3>Your saved colleges</h3><p>Colleges you marked Interested.</p></div>';
   if (!S.interested.length) h += '<div class="rowerr">Nothing saved yet. Tap Interested on any college on Home.</div>';
   else h += '<div style="display:flex;flex-wrap:wrap;gap:14px">' + S.interested.map(function (id) { return cardV(id).replace('class="pc"', 'class="pc" style="flex:1 1 272px;max-width:360px"'); }).join('') + '</div>';
-  if (S.not.length) h += '<div class="sec"><h3>Hidden</h3><p>Buddy will not suggest these again.</p>' + S.not.map(function (id) { var p = S.progs[id]; return p ? '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span></div><button class="btn ghost sm" data-restore="' + id + '">Bring back</button></div>' : ''; }).join('') + '</div>';
+  if (S.not.length) h += '<div class="sec"><h3>Hidden</h3><p>Buddy will not suggest these again.</p>' + S.not.map(function (id) { var p = P(id); return p ? '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span></div><button class="btn ghost sm" data-restore="' + id + '">Bring back</button></div>' : ''; }).join('') + '</div>';
   return h;
 }
-function progress(a) { var d = S.det[a.id], n = d && d.checklist ? d.checklist.length : 0, k = Object.keys(a.done || {}).filter(function (x) { return a.done[x]; }).length; return { n: n, k: k }; }
 function appsV() {
   var h = '<div class="sec"><h3>Your applications</h3><p>Up to ' + MAX_APPS + ' colleges, so you apply to fewer and better. Your first full kit is free.</p></div>';
   if (!S.apps.length) h += '<div class="rowerr">No applications yet. Open a college and choose Start application.</div>';
   S.apps.forEach(function (a) {
-    var p = S.progs[a.id]; if (!p) return; var pr = progress(a);
+    var p = P(a.id); if (!p) return; var pr = progress(a);
     h += '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span><div style="margin-top:6px">' + (a.applied ? '<span class="pill ok">Applied</span>' : '<span class="pill">' + (pr.n ? pr.k + ' of ' + pr.n + ' steps done' : 'Not started') + '</span>') + (S.freeId === a.id ? ' <span class="pill ok">Free kit</span>' : (!S.paid && S.freeId ? ' <span class="lock">Paid</span>' : '')) + '</div></div><button class="btn sm" data-check="' + a.id + '">Open checklist</button></div>';
   });
   h += '<div class="ap" style="background:var(--lav)"><div class="i"><h4>Gmail</h4><span class="muted">' + (S.gmail ? 'Connected (demo). Buddy marks an application as Applied when it sees the confirmation email.' : 'Connect Gmail so Buddy can mark applications as Applied from the confirmation emails you receive.') + '</span></div>' +
@@ -333,7 +356,7 @@ function bind() {
     var s = S.obStep, t;
     if (s === 0) { if ((t = $('ofield').value.trim())) S.p.field = t; if (!S.p.field) { toast('Pick your background or type it'); return; } if (!S.p.degree) S.p.degree = DEGREES[0]; }
     if (s === 1) { if ((t = $('ocourse').value.trim())) { S.p.course = t; S.p.courseDecided = 'yes'; } }
-    if (s === 2) { if ((t = $('ocountry').value.trim())) { S.p.country = t; S.p.countryDecided = 'yes'; } S.step = 'main'; S.rows = {}; S.insight = ''; S.cacheKey = ''; tab = 'home'; }
+    if (s === 2) { if ((t = $('ocountry').value.trim())) { S.p.country = t; S.p.countryDecided = 'yes'; } S.step = 'main'; S.rows = {}; S.insight = ''; S.custom = []; S.customKey = ''; customState = ''; tab = 'home'; }
     else S.obStep++;
     save(); render();
   };
@@ -342,35 +365,35 @@ function bind() {
   if ((el = $('orb'))) el.onclick = function () { openChat(); };
   if ((el = $('ask'))) el.onclick = function () { openChat(); };
   document.querySelectorAll('[data-pr]').forEach(function (b) { b.onclick = function () { openChat(b.getAttribute('data-pr')); }; });
-  document.querySelectorAll('[data-retry]').forEach(function (b) { b.onclick = function () { loadRow(b.getAttribute('data-retry')); }; });
+  document.querySelectorAll('[data-retry]').forEach(function (b) { b.onclick = function () { customState = ''; ensureCustom(); }; });
   document.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
   document.querySelectorAll('[data-int]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); toggleInt(b.getAttribute('data-int')); }; });
   document.querySelectorAll('[data-not]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); markNot(b.getAttribute('data-not')); }; });
   document.querySelectorAll('[data-restore]').forEach(function (b) { b.onclick = function () { S.not = S.not.filter(function (x) { return x !== b.getAttribute('data-restore'); }); save(); render(); }; });
   document.querySelectorAll('[data-check]').forEach(function (b) { b.onclick = function () { openChecklist(b.getAttribute('data-check')); }; });
   if ((el = $('gcon'))) el.onclick = function () { S.gmail = true; save(); render(); toast('Gmail connected (demo)'); };
-  if ((el = $('gsim'))) el.onclick = function () { var a = S.apps.filter(function (x) { return !x.applied; })[0]; if (!a) { toast('Nothing left to mark'); return; } a.applied = true; save(); render(); toast('Buddy found a confirmation email and marked ' + S.progs[a.id].university + ' as Applied'); };
+  if ((el = $('gsim'))) el.onclick = function () { var a = S.apps.filter(function (x) { return !x.applied; })[0]; if (!a) { toast('Nothing left to mark'); return; } a.applied = true; save(); render(); toast('Buddy found a confirmation email and marked ' + P(a.id).university + ' as Applied'); };
 }
-function toggleInt(id) { var i = S.interested.indexOf(id); if (i >= 0) S.interested.splice(i, 1); else { S.interested.push(id); toast('Saved'); ensureDetail(id).catch(function () { }); } S.not = S.not.filter(function (x) { return x !== id; }); save(); render(); }
+function toggleInt(id) { var i = S.interested.indexOf(id); if (i >= 0) S.interested.splice(i, 1); else { S.interested.push(id); toast('Saved'); } S.not = S.not.filter(function (x) { return x !== id; }); save(); render(); }
 function markNot(id) { if (S.not.indexOf(id) < 0) S.not.push(id); S.interested = S.interested.filter(function (x) { return x !== id; }); save(); closeAll(); render(); toast('Buddy will not suggest this again'); }
 
-/* ---------- rows (live research) ---------- */
-function profKey() { var p = S.p; return [p.field, p.degree, p.courseDecided, p.course, p.countryDecided, p.country].join('|'); }
-function startRows(force) {
-  if (S.cacheKey !== profKey()) { S.rows = {}; S.insight = ''; S.cacheKey = profKey(); save(); }
-  var todo = THEMES.filter(function (t) { return force || !((S.rows[t.id] || []).length || rowState[t.id] === 'loading' || rowState[t.id] === 'err'); });
-  todo.forEach(function (t) { rowState[t.id] = 'loading'; });
-  if (todo.length && tab === 'home') softRender();
-  todo.forEach(function (t) { loadRow(t.id); });
-}
-function loadRow(theme) {
-  rowState[theme] = 'loading'; if (tab === 'home') softRender();
-  return api('shortlist', { profile: S.p, theme: theme, count: 6, exclude: notNames() }).then(function (r) {
-    r.programs.forEach(function (p) { S.progs[p.id] = p; });
-    S.rows[theme] = r.programs.map(function (p) { return p.id; });
-    if (theme === 'fit' && r.insight) S.insight = r.insight;
-    rowState[theme] = 'ok'; save(); if (tab === 'home' && S.step === 'main') softRender();
-  }).catch(function (e) { rowState[theme] = 'err'; rowErr[theme] = e.message; if (tab === 'home' && S.step === 'main') softRender(); });
+/* ---------- rows: static catalogue. One model call only for a typed custom course ---------- */
+var customState = '', customErr = '';
+function P(id) { return S.progs[id] || PROGS[id] || null; }
+function rowsNow() { return buildRows(S.p, S.not, S.custom || []); }
+function startRows() { ensureCustom(); }
+function ensureCustom() {
+  var p = S.p;
+  if (p.courseDecided !== 'yes' || catOfCourse(p.course)) return;
+  var key = p.course + '|' + (p.countryDecided === 'yes' ? p.country : '');
+  if (S.customKey === key && (S.custom || []).length) return;
+  if (customState === 'loading') return;
+  customState = 'loading'; if (tab === 'home') softRender();
+  api('shortlist', { profile: p, theme: 'fit', count: 6, exclude: notNames() }).then(function (r) {
+    r.programs.forEach(function (x) { S.progs[x.id] = x; });
+    S.custom = r.programs.map(function (x) { return x.id; }); S.customKey = key; customState = 'ok'; save();
+    if (tab === 'home' && S.step === 'main') softRender();
+  }).catch(function (e) { customState = 'err'; customErr = e.message; if (tab === 'home' && S.step === 'main') softRender(); });
 }
 function softRender() { var y = window.scrollY, sc = Array.prototype.map.call(document.querySelectorAll('.scroller'), function (s) { return s.scrollLeft; }); $('app').innerHTML = mainV(); bind(); window.scrollTo(0, y); document.querySelectorAll('.scroller').forEach(function (s, i) { s.scrollLeft = sc[i] || 0; }); }
 
@@ -391,37 +414,51 @@ var inflight = {};
 function ensureDetail(id) {
   if (S.det[id]) return Promise.resolve(S.det[id]);
   if (inflight[id]) return inflight[id];
-  var p = S.progs[id];
-  inflight[id] = api('college', { university: p.university, program: p.program, url: p.url, profile: S.p }).then(function (d) { S.det[id] = d; save(); delete inflight[id]; return d; }, function (e) { delete inflight[id]; throw e; });
+  var p = P(id);
+  inflight[id] = api('college', { university: p.university, program: p.program, url: p.url }).then(function (d) { S.det[id] = d; save(); delete inflight[id]; return d; }, function (e) { delete inflight[id]; throw e; });
   return inflight[id];
 }
 function openDetail(id) {
-  var p = S.progs[id]; if (!p) return;
+  var p = P(id); if (!p) return;
   var d = openOv(head(p.program) + '<div class="sh-body" id="db"></div>'); wireX(d);
-  var body = d.querySelector('#db');
-  body.innerHTML = loadingBody(['Checking the official pages for ' + p.university + '. This takes up to a minute...', 'Reading the admission requirements...', 'Checking deadlines and fees...']) + '<p class="muted" style="text-align:center;font-size:13px">You can close this. Buddy keeps checking, and it will be ready when you come back.</p>';
-  ensureDetail(id).then(function (det) { renderDetail(d, id, det); }).catch(function (e) {
-    body.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span><button class="btn sm" id="rt">Try again</button></div>';
-    body.querySelector('#rt').onclick = function () { closeOv(d); openDetail(id); };
-  });
+  paintDetail(d, id);
 }
-function renderDetail(d, id, det) {
-  var p = S.progs[id], on = S.interested.indexOf(id) >= 0, inApps = S.apps.some(function (a) { return a.id === id; });
+function paintDetail(d, id) {
+  var p = P(id), det = S.det[id], on = S.interested.indexOf(id) >= 0, inApps = S.apps.some(function (a) { return a.id === id; }), cn = CN[p.country] || {};
   function v(x) { return x ? esc(x) : '<em>Not stated on the official page</em>'; }
-  var rows = [['Deadline', det.deadline], ['Intake', det.cycle], ['Duration', det.duration], ['Entrance test', det.entrance_tests], ['English test', det.english_test], ['Who can apply', det.academic_requirement], ['Statement of purpose', det.sop_requirement], ['Recommendation letters', det.lor_count == null ? null : String(det.lor_count)], ['Application fee', det.application_fee], ['Tuition', det.tuition]];
-  var h = (det.found === false ? '<div class="notice">Buddy could not confirm this exact program on an official page. Check the college website before you rely on anything here.</div>' : '') + '<p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p>' + (det.highlights ? '<p class="muted" style="margin:0 0 14px">' + esc(det.highlights) + '</p>' : '') +
-    '<div class="kv">' + rows.map(function (r) { return '<div><b>' + r[0] + '</b><span>' + v(r[1]) + '</span></div>'; }).join('') + '</div>' +
-    '<p class="muted" style="font-size:13px">Checked on ' + esc(det.checked) + '. Confirm on the official page before you apply.</p>' +
-    (det.sources && det.sources.length ? '<p style="font-size:13px"><b>Sources</b><br>' + det.sources.map(function (s) { return '<a target="_blank" rel="noopener" href="' + esc(safeUrl(s.url)) + '">' + esc(s.title || s.url) + '</a>'; }).join('<br>') + '</p>' : '') +
-    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn" id="d-app"' + (inApps ? ' disabled' : '') + '>' + (inApps ? 'In your applications' : 'Start application') + '</button><button class="btn ghost" id="d-int">' + (on ? 'Saved' : 'Interested') + '</button><button class="btn ghost" id="d-not">Not interested</button><button class="btn ghost" id="d-dl">Download research</button></div>';
-  d.querySelector('#db').innerHTML = h;
-  d.querySelector('#d-int').onclick = function () { toggleInt(id); closeOv(d); openDetail(id); };
-  d.querySelector('#d-not').onclick = function () { markNot(id); };
-  d.querySelector('#d-dl').onclick = function () {
-    var t = 'BUDDY RESEARCH\n' + p.program + ', ' + p.university + '\n' + p.city + ' ' + p.country + '\nChecked: ' + det.checked + '\n\n' + rows.map(function (r) { return r[0] + ': ' + (r[1] || 'Not stated on the official page'); }).join('\n') + '\n\nChecklist:\n' + (det.checklist || []).map(function (c, i) { return (i + 1) + '. ' + c.title + (c.note ? ' (' + c.note + ')' : ''); }).join('\n') + '\n\nSources:\n' + (det.sources || []).map(function (s) { return s.url; }).join('\n');
+  var rows = [];
+  var h = '<p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p><p style="margin:0 0 14px">' + esc(p.reason || reasonOf(p, S.p)) + '</p>';
+  if (det) {
+    rows = [['Deadline', det.deadline], ['Intake', det.cycle], ['Duration', det.duration], ['Entrance test', det.entrance_tests], ['English test', det.english_test], ['Who can apply', det.academic_requirement], ['Statement of purpose', det.sop_requirement], ['Recommendation letters', det.lor_count == null ? null : String(det.lor_count)], ['Application fee', det.application_fee], ['Tuition', det.tuition]];
+    h = (det.found === false ? '<div class="notice">Buddy could not confirm this exact program on an official page. Check the college website before you rely on anything here.</div>' : '') + h + (det.highlights ? '<p class="muted" style="margin:0 0 14px">' + esc(det.highlights) + '</p>' : '') +
+      '<div class="kv">' + rows.map(function (r) { return '<div><b>' + r[0] + '</b><span>' + v(r[1]) + '</span></div>'; }).join('') + '</div>' +
+      '<p class="muted" style="font-size:13px">Checked on ' + esc(det.checked) + '. Confirm on the official page before you apply.</p>' +
+      (det.sources && det.sources.length ? '<p style="font-size:13px"><b>Sources</b><br>' + det.sources.map(function (s) { return '<a target="_blank" rel="noopener" href="' + esc(safeUrl(s.url)) + '">' + esc(s.title || s.url) + '</a>'; }).join('<br>') + '</p>' : '');
+  } else {
+    h += '<div class="kv"><div><b>Course</b><span>' + esc(p.program) + '</span></div><div><b>Country</b><span>' + esc(p.country) + (cn.note ? ' | ' + esc(cn.note) : '') + '</span></div><div><b>Deadline, fees, tests</b><span><em>Not checked yet</em></span></div></div>' +
+      '<p class="muted" style="font-size:13px">Deadlines, fees and test rules change every year. Buddy reads the official page only when you ask, so what you see is current.</p>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button class="btn" id="d-chk">Check official pages</button><span class="muted" style="font-size:13px">Takes up to a minute</span></div>';
+  }
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn' + (det ? '' : ' ghost') + '" id="d-app"' + (inApps ? ' disabled' : '') + '>' + (inApps ? 'In your applications' : 'Start application') + '</button><button class="btn ghost" id="d-int">' + (on ? 'Saved' : 'Interested') + '</button><button class="btn ghost" id="d-not">Not interested</button><button class="btn ghost" id="d-dl">Download research</button></div>';
+  var b = d.querySelector('#db'); b.innerHTML = h;
+  var chk = b.querySelector('#d-chk');
+  if (chk) chk.onclick = function () {
+    b.innerHTML = loadingBody(['Checking the official pages for ' + p.university + '...', 'Reading the admission requirements...', 'Checking deadlines and fees...']) + '<p class="muted" style="text-align:center;font-size:13px">You can close this. Buddy keeps checking and it will be ready when you come back.</p>';
+    ensureDetail(id).then(function () { if (document.body.contains(d)) paintDetail(d, id); }).catch(function (e) {
+      if (!document.body.contains(d)) return;
+      b.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span><button class="btn sm" id="rt">Back</button></div>';
+      b.querySelector('#rt').onclick = function () { paintDetail(d, id); };
+    });
+  };
+  b.querySelector('#d-int').onclick = function () { toggleInt(id); paintDetail(d, id); };
+  b.querySelector('#d-not').onclick = function () { markNot(id); };
+  b.querySelector('#d-dl').onclick = function () {
+    var t = 'BUDDY RESEARCH\n' + p.program + ', ' + p.university + '\n' + (p.city || '') + ' ' + p.country + '\n' + (det ? 'Checked: ' + det.checked : 'Official pages not checked yet. Open the college in Buddy and choose Check official pages for deadlines and fees.') + '\n\nWhy it was suggested: ' + (p.reason || reasonOf(p, S.p)) + '\n' +
+      (det ? '\n' + rows.map(function (r) { return r[0] + ': ' + (r[1] || 'Not stated on the official page'); }).join('\n') + '\n' : '') +
+      '\nChecklist:\n' + ckList(id).map(function (c, i) { return (i + 1) + '. ' + c.title + (c.note ? ' (' + c.note + ')' : ''); }).join('\n') + (det ? '\n\nSources:\n' + (det.sources || []).map(function (s) { return s.url; }).join('\n') : '');
     download('buddy-' + id + '.txt', clean(t));
   };
-  d.querySelector('#d-app').onclick = function () {
+  b.querySelector('#d-app').onclick = function () {
     if (S.apps.length >= MAX_APPS) { toast('You can apply to up to ' + MAX_APPS + ' colleges here'); return; }
     S.apps.push({ id: id, done: {}, applied: false }); save(); closeOv(d); render(); toast('Added to your applications');
   };
@@ -430,36 +467,42 @@ function renderDetail(d, id, det) {
 /* ---------- checklist ---------- */
 function gate(id, then) {
   if (S.paid || S.freeId === id) return then();
-  if (!S.freeId) { var d = openOv(head('Use your free kit here?') + '<div class="sh-body"><p>Your first full application kit is free: the statement of purpose, the checklist and interview prep. You can use it for one college. Use it for <b>' + esc(S.progs[id].university) + '</b>?</p><div style="display:flex;gap:8px"><button class="btn" id="y">Yes, use it here</button><button class="btn ghost" data-x>Not yet</button></div></div>', true); wireX(d); d.querySelector('#y').onclick = function () { S.freeId = id; save(); closeOv(d); render(); then(); }; return; }
-  var q = openOv(head('This college needs the paid plan') + '<div class="sh-body"><p>Your free kit is used on <b>' + esc(S.progs[S.freeId].university) + '</b>. One flat fee unlocks the statement of purpose, interview prep and deadline reminders for all your colleges (up to ' + MAX_APPS + ').</p><p class="muted" style="font-size:13px">Prototype only. No payment is taken.</p><div style="display:flex;gap:8px"><button class="btn" id="pay">Unlock (demo)</button><button class="btn ghost" data-x>Not now</button></div></div>', true); wireX(q);
+  if (!S.freeId) { var d = openOv(head('Use your free kit here?') + '<div class="sh-body"><p>Your first full application kit is free: the statement of purpose, the checklist and interview prep. You can use it for one college. Use it for <b>' + esc(P(id).university) + '</b>?</p><div style="display:flex;gap:8px"><button class="btn" id="y">Yes, use it here</button><button class="btn ghost" data-x>Not yet</button></div></div>', true); wireX(d); d.querySelector('#y').onclick = function () { S.freeId = id; save(); closeOv(d); render(); then(); }; return; }
+  var q = openOv(head('This college needs the paid plan') + '<div class="sh-body"><p>Your free kit is used on <b>' + esc(P(S.freeId).university) + '</b>. One flat fee unlocks the statement of purpose, interview prep and deadline reminders for all your colleges (up to ' + MAX_APPS + ').</p><p class="muted" style="font-size:13px">Prototype only. No payment is taken.</p><div style="display:flex;gap:8px"><button class="btn" id="pay">Unlock (demo)</button><button class="btn ghost" data-x>Not now</button></div></div>', true); wireX(q);
   q.querySelector('#pay').onclick = function () { S.paid = true; save(); closeOv(q); render(); toast('Unlocked (demo)'); then(); };
 }
+function ckList(id) { var det = S.det[id]; return det && det.checklist && det.checklist.length ? det.checklist : DEFAULT_CHECK; }
+function ckKey(c) { return c.kind === 'other' ? 'o:' + c.title : c.kind; }
+function progress(a) { var l = ckList(a.id), k = l.filter(function (c) { return a.done[ckKey(c)]; }).length; return { n: l.length, k: k }; }
 function openChecklist(id) {
-  var a = S.apps.filter(function (x) { return x.id === id; })[0], p = S.progs[id]; if (!a) return;
+  var a = S.apps.filter(function (x) { return x.id === id; })[0], p = P(id); if (!a) return;
   var d = openOv(head(p.program + ' | ' + p.university) + '<div class="sh-body" id="cb"></div>'); wireX(d, function () { render(); });
-  var body = d.querySelector('#cb');
-  body.innerHTML = loadingBody(['Building your checklist from the official pages...']);
-  ensureDetail(id).then(function (det) { paintChecklist(d, id, det); }).catch(function (e) { body.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span></div>'; });
+  paintChecklist(d, id);
 }
-function paintChecklist(d, id, det) {
-  var a = S.apps.filter(function (x) { return x.id === id; })[0], list = det.checklist || [];
-  var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px"><span class="muted">' + (det.deadline ? 'Deadline: ' + esc(det.deadline) : 'Deadline not stated on the official page') + '</span><button class="btn' + (a.applied ? ' ghost' : '') + ' sm" id="ap">' + (a.applied ? 'Applied. Undo' : 'I have applied') + '</button></div>';
-  if (!list.length) h += '<div class="rowerr">Buddy could not find a clear checklist on the official pages. Open the sources on the college page and add your own steps.</div>';
-  list.forEach(function (c, i) {
-    var done = !!a.done[i], sop = c.kind === 'sop';
-    h += '<div class="cl' + (done ? ' done' : '') + '"><div class="box" data-tg="' + i + '" style="cursor:pointer">' + (done ? '&#10003;' : '') + '</div><div class="t"><b>' + esc(c.title) + '</b>' + (c.note ? '<span>' + esc(c.note) + '</span>' : '') + '</div>' + (sop ? '<button class="btn sm" data-sop>' + (S.sop[id] ? 'Open draft' : 'Write with Buddy') + '</button>' : '') + '</div>';
+function paintChecklist(d, id) {
+  var a = S.apps.filter(function (x) { return x.id === id; })[0], det = S.det[id], list = ckList(id);
+  var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px"><span class="muted">' + (det && det.deadline ? 'Deadline: ' + esc(det.deadline) : 'Deadline: check the official page') + '</span><button class="btn' + (a.applied ? ' ghost' : '') + ' sm" id="ap">' + (a.applied ? 'Applied. Undo' : 'I have applied') + '</button></div>';
+  if (!det) h += '<div class="notice" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span>This is the usual list. Colleges differ, so check the exact requirements.</span><button class="btn sm" id="ck-chk">Check official pages</button></div>';
+  list.forEach(function (c) {
+    var key = ckKey(c), done = !!a.done[key], sop = c.kind === 'sop';
+    h += '<div class="cl' + (done ? ' done' : '') + '"><div class="box" data-tg="' + esc(key) + '" style="cursor:pointer">' + (done ? '&#10003;' : '') + '</div><div class="t"><b>' + esc(c.title) + '</b>' + (c.note ? '<span>' + esc(c.note) + '</span>' : '') + '</div>' + (sop ? '<button class="btn sm" data-sop>' + (S.sop[id] ? 'Open draft' : 'Write with Buddy') + '</button>' : '') + '</div>';
   });
   h += '<div class="cl"><div class="t"><b>Interview prep' + (!S.paid && S.freeId !== id ? '<span class="lock">Paid</span>' : '') + '</b><span>Likely questions for this course and feedback on your answers.</span></div><button class="btn sm" data-iv>Start</button></div>';
-  d.querySelector('#cb').innerHTML = h;
-  d.querySelector('#ap').onclick = function () { a.applied = !a.applied; save(); paintChecklist(d, id, det); };
-  d.querySelectorAll('[data-tg]').forEach(function (b) { b.onclick = function () { var i = b.getAttribute('data-tg'); a.done[i] = !a.done[i]; save(); paintChecklist(d, id, det); }; });
-  var s = d.querySelector('[data-sop]'); if (s) s.onclick = function () { gate(id, function () { openStory(id, 0); }); };
-  d.querySelector('[data-iv]').onclick = function () { gate(id, function () { openInterview(id); }); };
+  var b = d.querySelector('#cb'); b.innerHTML = h;
+  b.querySelector('#ap').onclick = function () { a.applied = !a.applied; save(); paintChecklist(d, id); };
+  var ck = b.querySelector('#ck-chk');
+  if (ck) ck.onclick = function () {
+    b.innerHTML = loadingBody(['Reading the official pages. This takes up to a minute...']);
+    ensureDetail(id).then(function () { if (document.body.contains(d)) paintChecklist(d, id); }).catch(function (e) { if (!document.body.contains(d)) return; b.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span><button class="btn sm" id="rt">Back</button></div>'; b.querySelector('#rt').onclick = function () { paintChecklist(d, id); }; });
+  };
+  b.querySelectorAll('[data-tg]').forEach(function (x) { x.onclick = function () { var k = x.getAttribute('data-tg'); a.done[k] = !a.done[k]; save(); paintChecklist(d, id); }; });
+  var s = b.querySelector('[data-sop]'); if (s) s.onclick = function () { gate(id, function () { openStory(id, 0); }); };
+  b.querySelector('[data-iv]').onclick = function () { gate(id, function () { openInterview(id); }); };
 }
 
 /* ---------- story and statement of purpose ---------- */
 function openStory(id, i) {
-  var p = S.progs[id], q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || '');
+  var p = P(id), q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || '');
   var d = openOv(head('Your story, step ' + (i + 1) + ' of ' + STORIES.length) + '<div class="sh-body"><div class="steps">' + STORIES.map(function (_, j) { return '<i class="' + (j <= i ? 'on' : '') + '"></i>'; }).join('') + '</div><h2 style="font-size:20px">' + esc(isWhy ? 'Why ' + p.university + ' and this course?' : q.q) + '</h2>' +
     '<div class="hint"><b>How to answer</b>' + esc(q.hint) + '</div><div class="hint" style="border-color:var(--mint)"><b>Why this matters</b>' + esc(q.why) + '</div>' +
     '<textarea id="ans" class="field" placeholder="Write in your own words. Short and honest is fine.">' + esc(val) + '</textarea>' +
@@ -469,12 +512,20 @@ function openStory(id, i) {
   d.querySelector('#bk').onclick = function () { keep(); closeOv(d); openStory(id, i - 1); };
   d.querySelector('#nx').onclick = function () { var v = keep(); if (!v) { toast('A few words will do'); return; } closeOv(d); if (i === STORIES.length - 1) openDraft(id, true); else openStory(id, i + 1); };
 }
+function localDraft(id) {
+  var p = P(id), s = S.story, w = S.why[id] || '';
+  var parts = [[s.Q1, ['Q1']], [s.Q2, ['Q2']], [s.Q3, ['Q3']], [s.Q4, ['Q4']], [(w ? w + ' ' : '') + (s.Q6 || ''), ['WHY', 'Q6']], [s.Q5, ['Q5']], [(s.Q7 ? s.Q7 + ' ' : '') + 'I would be grateful for the chance to study ' + p.program + ' at ' + p.university + '.', ['Q7']]];
+  var text = [], src = [];
+  parts.forEach(function (x) { var t = (x[0] || '').trim(); if (t) { text.push(t); src.push(x[1]); } });
+  return { text: text.join('\n\n'), src: src, plain: true };
+}
 function openDraft(id, make) {
-  var p = S.progs[id], d = openOv(head('Statement of purpose draft') + '<div class="sh-body" id="sb"></div>'); wireX(d);
+  var p = P(id), d = openOv(head('Statement of purpose draft') + '<div class="sh-body" id="sb"></div>'); wireX(d);
   var b = d.querySelector('#sb');
   function paint() {
     var s = S.sop[id]; var src = s.src || [];
-    b.innerHTML = '<p class="muted" style="font-size:13px">Built only from your answers. Square brackets mark details Buddy needs from you. Edit freely.</p><textarea id="dt" class="field" style="min-height:360px">' + esc(s.text) + '</textarea>' +
+    b.innerHTML = (s.plain ? '<div class="notice">Buddy\'s writing helper did not answer, so this draft is your own answers put in order. Edit it, or tap Write again to try the helper once more.</div>' : '') +
+      '<p class="muted" style="font-size:13px">Built only from your answers. Square brackets mark details Buddy needs from you. Edit freely.</p><textarea id="dt" class="field" style="min-height:360px">' + esc(s.text) + '</textarea>' +
       (src.length ? '<p class="muted" style="font-size:12px">Built from: ' + src.map(function (x, i) { return 'paragraph ' + (i + 1) + ' = ' + (x.join(', ') || 'your answers'); }).join(' | ') + '</p>' : '') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="dl">Download</button><button class="btn ghost" id="cp">Copy</button><button class="btn ghost" id="rg">Write again</button><button class="btn ghost" id="ed">Edit my answers</button></div>';
     b.querySelector('#dt').oninput = function () { S.sop[id].text = this.value; save(); };
@@ -485,89 +536,142 @@ function openDraft(id, make) {
   }
   if (!make && S.sop[id]) return paint();
   b.innerHTML = loadingBody(['Buddy is writing your draft from your answers...', 'Putting your story in order...']);
-  ensureDetail(id).catch(function () { return {}; }).then(function (det) {
-    var ans = Object.assign({}, S.story, { WHY: S.why[id] || '' });
-    return api('sop', { profile: S.p, college: { university: p.university, program: p.program, sop_requirement: det.sop_requirement, highlights: det.highlights }, answers: ans });
-  }).then(function (r) { S.sop[id] = { text: r.text, src: r.src }; save(); paint(); }).catch(function (e) { b.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span><button class="btn sm" id="rt">Try again</button></div>'; b.querySelector('#rt').onclick = function () { closeOv(d); openDraft(id, true); }; });
+  var det = S.det[id] || {}, ans = Object.assign({}, S.story, { WHY: S.why[id] || '' });
+  api('sop', { profile: S.p, college: { university: p.university, program: p.program, sop_requirement: det.sop_requirement, highlights: det.highlights }, answers: ans })
+    .then(function (r) { S.sop[id] = { text: r.text, src: r.src }; save(); paint(); })
+    .catch(function (e) { S.sop[id] = localDraft(id); save(); paint(); toast(e.message); });
 }
 
-/* ---------- interview ---------- */
+/* ---------- interview: fixed question bank, model only for feedback ---------- */
 function openInterview(id) {
-  var p = S.progs[id], d = openOv(head('Interview prep | ' + p.university) + '<div class="sh-body" id="ib"></div>'); wireX(d);
-  var b = d.querySelector('#ib');
+  var p = P(id), d = openOv(head('Interview prep | ' + p.university) + '<div class="sh-body" id="ib"></div>'); wireX(d);
+  var b = d.querySelector('#ib'), qs = interviewQs(p);
   function list() {
-    var qs = S.iq[id].questions;
     b.innerHTML = '<p class="muted">Pick a question, write your answer, and get feedback.</p>' + qs.map(function (q, i) { return '<div class="cl" style="cursor:pointer" data-q="' + i + '"><div class="t"><b>' + esc(q) + '</b></div></div>'; }).join('');
     b.querySelectorAll('[data-q]').forEach(function (e) { e.onclick = function () { one(+e.getAttribute('data-q')); }; });
   }
   function one(i) {
-    var q = S.iq[id].questions[i];
+    var q = qs[i];
     b.innerHTML = '<button class="link" id="bk">All questions</button><h2 style="font-size:19px;margin-top:10px">' + esc(q) + '</h2><textarea id="ia" class="field" placeholder="Answer as you would in the interview."></textarea><button class="btn" id="fb">Get feedback</button><div id="fo" style="margin-top:14px"></div>';
     b.querySelector('#bk').onclick = list;
     b.querySelector('#fb').onclick = function () {
       var a = b.querySelector('#ia').value.trim(); if (!a) { toast('Write a few lines first'); return; }
       var fo = b.querySelector('#fo'); fo.innerHTML = loadingBody(['Reading your answer...']);
-      api('interview', { mode: 'feedback', college: { university: p.university, program: p.program }, question: q, answer: a }).then(function (r) { fo.innerHTML = '<div class="draft">' + esc(r.text) + '</div>'; }).catch(function (e) { fo.innerHTML = '<div class="rowerr">' + esc(e.message) + '</div>'; });
+      api('interview', { college: { university: p.university, program: p.program }, question: q, answer: a }).then(function (r) { fo.innerHTML = '<div class="draft">' + esc(r.text) + '</div>'; }).catch(function (e) { fo.innerHTML = '<div class="rowerr">' + esc(e.message) + '</div>'; });
     };
   }
-  if (S.iq[id]) return list();
-  b.innerHTML = loadingBody(['Buddy is preparing questions for this course...']);
-  ensureDetail(id).catch(function () { return {}; }).then(function (det) { return api('interview', { college: { university: p.university, program: p.program, highlights: det.highlights }, profile: S.p, answers: S.story }); })
-    .then(function (r) { S.iq[id] = r; save(); list(); }).catch(function (e) { b.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span></div>'; });
+  list();
 }
 
-/* ---------- Buddy chat ---------- */
-var chatEl = null, busy = false;
-function openChat(prefill) {
-  if (chatEl) return;
-  chatEl = openOv('<div class="chat"><div class="sh-head"><div class="logo"><i></i>Buddy</div><h3></h3><button class="x" data-x aria-label="Close">x</button></div><div class="msgs" id="ms"></div><div class="cchips" id="cc"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="600"><button class="btn" id="cs">Send</button></div></div>');
-  chatEl.querySelectorAll('[data-x]').forEach(function (b) { b.onclick = function () { closeOv(chatEl); chatEl = null; }; });
-  chatEl.addEventListener('mousedown', function (e) { if (e.target === chatEl) chatEl = null; });
-  if (!S.chat.length) {
-    S.chat.push({ role: 'assistant', content: 'Hi ' + first() + '. I will keep this simple. A few quick questions first, so my answers fit you. When do you want to start your course?' });
-    S.chatStage = 0;
+/* ---------- Buddy dock: tap questions, instant answers, one model call only for free text ---------- */
+var STARTERS = ['Which course suits my background?', 'How do I pick between two colleges?', 'What does a strong application need?'];
+var QBANK = [
+  { id: 'intake', q: 'When do you want to start your course?', opts: INTAKES, set: function (v) { S.p.intake = v; } },
+  { id: 'budget', q: 'About how much can you spend on tuition in a year?', opts: ['Under 15 lakh', '15 to 30 lakh', 'Above 30 lakh', 'No limit'], set: function (v) { S.p.budget = v; S.p.budgetOn = /Under|15 to/.test(v); S.p.budgetLakh = /Under/.test(v) ? 15 : /15 to/.test(v) ? 30 : 0; } },
+  { id: 'marks', q: 'What were your marks in your degree?', opts: ['Above 80%', '65 to 80%', 'Below 65%'], set: function (v) { S.p.marks = v; } },
+  { id: 'tests', q: 'Which test have you taken, or plan to take?', opts: TESTS, set: function (v) { S.p.tests = v; } },
+  { id: 'work', q: 'Do you have work experience?', opts: ['None', 'Under 2 years', '2 years or more'], set: function (v) { S.p.workYears = v; } },
+  { id: 'priority', q: 'What matters most to you?', opts: ['Job outcomes', 'Low cost', 'Short course'], set: function (v) { S.p.priority = v; } }
+];
+var PKEY = { intake: 'intake', budget: 'budget', marks: 'marks', tests: 'tests', work: 'workYears', priority: 'priority' };
+function qOf(id) { return QBANK.filter(function (q) { return q.id === id; })[0]; }
+function answered(q) { return !!S.p[PKEY[q.id]] || S.skipQ.indexOf(q.id) >= 0; }
+function nextQ(skipId) { return QBANK.filter(function (q) { return !answered(q) && q.id !== skipId; })[0]; }
+function answerQ(id, val) {
+  var q = qOf(id);
+  if (val === 'Skip') { if (S.skipQ.indexOf(id) < 0) S.skipQ.push(id); } else q.set(val);
+  save(); if (S.step === 'main' && tab === 'home') softRender();
+}
+function topIds(n) {
+  var rows = rowsNow(), out = [];
+  rows.forEach(function (r) { r.ids.forEach(function (id) { if (out.length < n && out.indexOf(id) < 0 && S.not.indexOf(id) < 0 && P(id)) out.push(id); }); if (out.length >= n) return; });
+  return out.slice(0, n);
+}
+function staticAnswer(t) {
+  var s = t.toLowerCase();
+  if (t === STARTERS[0]) {
+    var cats = (FIELD_CATS[fieldKey(S.p.field)] || []).map(function (c) { return '- ' + CATS[c].label + ': ' + CATS[c].pitch; }).join('\n');
+    return 'For ' + (FIELD_SHORT[fieldKey(S.p.field)] || 'your') + ' graduates these paths are common:\n' + cats + '\nThe rows on Home follow these paths. Tell me what matters most to you and I will sort them.';
   }
-  chatPaint();
-  var ci = $('ci');
-  $('cs').onclick = function () { var v = ci.value.trim(); if (v) { ci.value = ''; userSays(v); } };
-  ci.onkeydown = function (e) { if (e.key === 'Enter') $('cs').click(); };
-  if (prefill) { S.chatStage = Math.max(S.chatStage, 3); userSays(prefill); }
+  if (t === STARTERS[1]) return 'Compare on four things:\n1. What you will study, and whether it matches your goal.\n2. Total yearly cost, including living costs.\n3. Whether your marks and tests fit what they ask for.\n4. Where their graduates work.\nTap Interested on both, open each one, and use Check official pages. Pick the one whose course content fits your goal best.';
+  if (t === STARTERS[2]) return 'A strong application has five things:\n1. A clear reason for this course and this college.\n2. A statement of purpose built from your real stories.\n3. Recommendation letters from people who know your work.\n4. Test scores that meet the college rule.\n5. Everything submitted before the deadline.\nOpen Applications and Buddy will build the checklist and help with the statement.';
+  if (/\b(visa|visas|loan|loans|scholarship|scholarships|funding|fund)\b/.test(s)) return 'Buddy does not cover funding or visas yet. For now it helps you choose a course and college, apply, write your statement and prepare for interviews.';
+  if (/deadline|fee|fees|tuition|requirement|requirements/.test(s)) return 'Deadlines, fees and requirements change every year. Open any college and tap Check official pages. Buddy reads the official page and shows what it finds, with the source.';
+  if (/\b(gre|gmat|ielts|toefl|lsat|pte|test|tests)\b/.test(s)) return 'Test rules differ by college and change often. Open the college, tap Check official pages, and Buddy shows which tests it asks for. You can tell me which test you plan to take and I will use it to sort your lists.';
+  if (/\b(sop|statement of purpose)\b/.test(s)) return 'Open Applications, start an application and choose Write with Buddy. It asks you eight short questions with hints, then writes the draft only from your answers.';
+  if (/interview/.test(s)) return 'Open your application checklist and tap Start under Interview prep. Pick a question, type your answer and Buddy gives you feedback.';
+  return null;
+}
+var chatOpen = false, busy = false, nudgeQ = '', lastNudge = Date.now() - 22000, pageT = Date.now();
+function dockOn() {
+  var dk = $('dock'); if (dk.firstChild) return;
+  dk.innerHTML = '<div id="nudge" class="nudge hide"></div>' +
+    '<div id="panel" class="panel hide"><div class="ph"><span class="logo"><i></i>Buddy</span><button class="x" id="pc" aria-label="Close chat">x</button></div><div class="msgs" id="ms"></div><div class="cchips" id="cc"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="400"><button class="btn" id="cs">Send</button></div></div>' +
+    '<button class="launch" id="launch"><i></i><span>Ask Buddy</span></button>';
+  $('launch').onclick = function () { if (chatOpen) closeChat(); else openChat(); };
+  $('pc').onclick = closeChat;
+  $('cs').onclick = function () { var ci = $('ci'), v = ci.value.trim(); if (v) { ci.value = ''; userSays(v); } };
+  $('ci').onkeydown = function (e) { if (e.key === 'Enter') $('cs').click(); };
+}
+function dockOff() { $('dock').innerHTML = ''; chatOpen = false; nudgeQ = ''; }
+function closeChat() { chatOpen = false; $('panel').classList.add('hide'); }
+function openChat(prefill) {
+  dockOn(); chatOpen = true; hideNudge(); $('panel').classList.remove('hide');
+  if (!S.chat.length) { S.chat.push({ role: 'assistant', content: 'Hi ' + first() + '. Three quick taps first, so your lists fit you.' }); chatNext(); }
+  else chatPaint();
+  if (prefill) userSays(prefill); else setTimeout(function () { var ci = $('ci'); if (ci && window.innerWidth > 760) ci.focus(); }, 50);
+}
+function chatNext() {
+  var nq = nextQ();
+  if (S.chatAsked < 3 && nq) { S.chatAsked++; S.chatQ = nq.id; S.chat.push({ role: 'assistant', content: nq.q }); }
+  else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; S.chat.push({ role: 'assistant', content: 'Thanks. Here are three that fit you so far. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(3) }); } }
+  save(); chatPaint();
 }
 function chatPaint() {
   var ms = $('ms'); if (!ms) return;
-  ms.innerHTML = S.chat.map(function (m) { return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + (m.sources && m.sources.length ? '<small>Sources: ' + m.sources.map(function (s) { return '<a target="_blank" rel="noopener" href="' + esc(safeUrl(s.url)) + '">' + esc(s.title || 'link') + '</a>'; }).join('') + '</small>' : '') + '</div>'; }).join('') + (busy ? '<div class="m b"><span class="typing"><i></i><i></i><i></i></span></div>' : '');
+  ms.innerHTML = S.chat.map(function (m) {
+    var cards = (m.ids || []).map(function (id) { var p = P(id); return p ? '<div class="mini" data-open="' + id + '"><b>' + esc(p.program) + '</b><span>' + esc(p.university) + ' | ' + esc(p.country) + '</span></div>' : ''; }).join('');
+    return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + cards + '</div>';
+  }).join('') + (busy ? '<div class="m b"><span class="typing"><i></i><i></i><i></i></span></div>' : '');
   ms.scrollTop = ms.scrollHeight;
-  var opts = [];
-  if (!busy) {
-    if (S.chatStage === 0) opts = INTAKES;
-    else if (S.chatStage === 1) opts = TESTS.concat(['Skip']);
-    else if (S.chatStage === 2) opts = ['Skip'];
-  }
+  ms.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
+  var opts = [], q = S.chatQ && qOf(S.chatQ);
+  if (!busy) opts = q ? q.opts.concat(['Skip']) : STARTERS;
   $('cc').innerHTML = opts.map(function (o) { return '<button class="chip" data-o="' + esc(o) + '">' + esc(o) + '</button>'; }).join('');
-  $('cc').querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { userSays(b.getAttribute('data-o'), true); }; });
+  $('cc').querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-o'); if (S.chatQ) chipAnswer(v); else userSays(v); }; });
 }
-function userSays(text, fromChip) {
+function chipAnswer(v) {
+  var id = S.chatQ; S.chat.push({ role: 'user', content: v }); answerQ(id, v); chatNext();
+}
+function userSays(text) {
   if (busy) return;
-  var st = S.chatStage;
-  if (st < 3 && fromChip !== undefined || (st === 2 && !fromChip)) {
-    S.chat.push({ role: 'user', content: text });
-    if (st === 0) { S.p.intake = text; S.chat.push({ role: 'assistant', content: 'Got it. Which tests have you taken or plan to take?' }); S.chatStage = 1; }
-    else if (st === 1) { if (text !== 'Skip') S.p.tests = text; S.chat.push({ role: 'assistant', content: 'Last one. What are your marks so far? A percentage or CGPA is fine. You can skip this.' }); S.chatStage = 2; }
-    else if (st === 2) { if (text !== 'Skip') S.p.marks = text; S.chatStage = 3; save(); chatPaint(); return ask('Using my profile, give me two useful observations about my options and one question I should think about next. Keep it short.', true); }
-    save(); chatPaint(); return;
-  }
-  S.chatStage = 3; S.chat.push({ role: 'user', content: text }); save(); ask(text);
-}
-function ask(text, hidden) {
-  busy = true; chatPaint();
-  var msgs = S.chat.filter(function (m) { return !m.sources || true; }).slice(-8).map(function (m) { return { role: m.role, content: m.content }; });
-  if (hidden) msgs.push({ role: 'user', content: text });
-  var short = S.interested.map(pname).filter(Boolean);
-  if (!short.length) Object.keys(S.rows).forEach(function (t) { (S.rows[t] || []).slice(0, 3).forEach(function (id) { if (short.length < 8 && S.not.indexOf(id) < 0) short.push(pname(id)); }); });
-  api('chat', { profile: S.p, shortlist: short, notInterested: notNames(), messages: msgs }).then(function (r) {
-    S.chat.push({ role: 'assistant', content: r.text, sources: r.sources }); busy = false; save(); chatPaint();
+  S.chat.push({ role: 'user', content: text });
+  var st = staticAnswer(text);
+  if (st) { S.chat.push({ role: 'assistant', content: st }); save(); return chatPaint(); }
+  busy = true; save(); chatPaint();
+  var msgs = S.chat.filter(function (m) { return !m.ids; }).slice(-4).map(function (m) { return { role: m.role, content: m.content }; });
+  api('chat', { profile: S.p, notInterested: notNames(), messages: msgs }).then(function (r) {
+    S.chat.push({ role: 'assistant', content: r.text }); busy = false; save(); chatPaint();
   }).catch(function (e) { S.chat.push({ role: 'assistant', content: e.message + ' You can send your message again.' }); busy = false; save(); chatPaint(); });
 }
+/* nudges: one small tap question at a time while the student scrolls the lists */
+function hideNudge() { nudgeQ = ''; var n = $('nudge'); if (n) n.classList.add('hide'); }
+function showNudge(q) {
+  var n = $('nudge'); if (!n) return;
+  nudgeQ = q.id; lastNudge = Date.now();
+  n.innerHTML = '<button class="nx" id="nclose" aria-label="Not now">x</button><b>Buddy</b><div class="nq">' + esc(q.q) + '</div><div class="chips">' + q.opts.map(function (o) { return '<button class="chip" data-nv="' + esc(o) + '">' + esc(o) + '</button>'; }).join('') + '</div><div class="muted" style="font-size:12px">Your lists update right away.</div>';
+  n.classList.remove('hide');
+  n.querySelectorAll('[data-nv]').forEach(function (b) { b.onclick = function () { var id = nudgeQ; hideNudge(); answerQ(id, b.getAttribute('data-nv')); lastNudge = Date.now(); toast('Lists updated'); }; });
+  $('nclose').onclick = function () { S.nudgeNo++; save(); hideNudge(); lastNudge = Date.now(); };
+}
+function nudgeCheck() {
+  if (S.step !== 'main' || tab !== 'home' || chatOpen || nudgeQ || $('ovs').children.length || S.nudgeNo >= 3 || !$('nudge')) return;
+  var now = Date.now(); if (now - lastNudge < 35000) return;
+  if (!(window.scrollY > 240) && now - pageT < 30000) return;
+  var q = nextQ(S.chatQ); if (q) showNudge(q);
+}
+setInterval(nudgeCheck, 4000);
+window.addEventListener('scroll', function () { if (!nudgeCheck.t) nudgeCheck.t = setTimeout(function () { nudgeCheck.t = 0; nudgeCheck(); }, 800); }, { passive: true });
 
 /* ---------- start ---------- */
 fetch('/api/health').then(function (r) { return r.json(); }).then(function (j) { LIVE = !!j.live; }).catch(function () { LIVE = true; }).then(render);

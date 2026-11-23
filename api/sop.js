@@ -4,13 +4,14 @@ const { route, str, profileText, profileOf, SAFETY, STYLE } = require('./_lib/co
 
 const KEYS = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'WHY'];
 
-module.exports = route(async function (body) {
+module.exports = route(async function (body, req, spend) {
   const profile = profileOf(body.profile);
   const c = body.college || {};
   const university = str(c.university, 120), program = str(c.program, 160);
   const answers = body.answers || {};
   const lines = KEYS.map(k => k + ': ' + str(answers[k], 1500)).join('\n');
   if (!university || !program) { const e = new Error('Missing college or program.'); e.status = 400; throw e; }
+  spend();
 
   const system =
     'You are Buddy, a writing coach helping an Indian student write a statement of purpose for one postgraduate program. ' +
@@ -20,12 +21,12 @@ module.exports = route(async function (body) {
 
   const prompt =
     'PROGRAM: ' + program + ' at ' + university + '\nOfficial statement of purpose rule: ' + str(c.sop_requirement, 300) + '\nProgram highlight: ' + str(c.highlights, 300) + '\n\n' +
-    'STUDENT PROFILE (data):\n' + profileText(profile) + '\n\n' +
-    'STUDENT ANSWERS (data). Q1 first moment, Q2 strongest project, Q3 a setback, Q4 beyond coursework, Q5 goals in 3 and 10 years, Q6 why abroad and why this country, Q7 something not on the resume, WHY reason for this college:\n' + lines + '\n\n' +
-    'TASK: Write a draft of about ' + (parseInt(body.words, 10) || 550) + ' words, in the first person, in seven paragraphs: first moment, strongest project, setback and what changed, beyond coursework, why this program and country, goals, closing. ' +
+    'STUDENT: ' + [profile.degree, profile.field].filter(Boolean).join(' in ') + '\n\n' +
+    'ANSWERS (data). Q1 first moment, Q2 project, Q3 setback, Q4 beyond coursework, Q5 goals, Q6 why abroad, Q7 not on resume, WHY this college:\n' + lines + '\n\n' +
+    'TASK: Write a draft of about ' + (parseInt(body.words, 10) || 500) + ' words, in the first person, in seven paragraphs: first moment, strongest project, setback and what changed, beyond coursework, why this program and country, goals, closing. ' +
     'End every paragraph with a tag on the same line like [Sources: Q1, Q2] naming the answers you used. Separate paragraphs with one blank line.';
 
-  const out = await generate({ system, messages: [{ role: 'user', content: prompt }], temperature: 0.7, maxTokens: 4096, timeoutMs: 50000 });
+  const out = await generate({ system, messages: [{ role: 'user', content: prompt }], maxTokens: 1400, timeoutMs: 40000 });
   const paras = out.text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
   const text = [], src = [];
   paras.forEach(par => {

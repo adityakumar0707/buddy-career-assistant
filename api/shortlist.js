@@ -5,9 +5,9 @@ const { route, str, slug, httpsUrl, profileText, profileOf, SAFETY, STYLE } = re
 const CACHE = new Map();
 const TTL = 6 * 3600 * 1000;
 
-module.exports = route(async function (body) {
+module.exports = route(async function (body, req, spend) {
   const profile = profileOf(body.profile);
-  const count = Math.min(Math.max(parseInt(body.count, 10) || 6, 2), 10);
+  const count = Math.min(Math.max(parseInt(body.count, 10) || 6, 2), 6);
   const theme = ['fit', 'notest', 'explore'].indexOf(body.theme) >= 0 ? body.theme : 'fit';
   const THEMES = {
     fit: 'Pick the programs that best match this student\'s background, course and marks.',
@@ -20,6 +20,7 @@ module.exports = route(async function (body) {
   const hit = CACHE.get(ckey);
   if (hit && Date.now() - hit.t < TTL) return hit.v;
 
+  spend();
   const system =
     'You are Buddy, a careful study abroad advisor for Indian students applying to postgraduate programs. ' +
     'Suggest only real postgraduate programs that you are confident exist and are currently offered. Never invent a program. ' +
@@ -40,7 +41,7 @@ module.exports = route(async function (body) {
     'Return only JSON in this exact shape:\n' +
     '{"insight":"...","programs":[{"university":"...","program":"...","country":"...","city":"...","reason":"...","official_url":"https://..."}]}';
 
-  const { data, sources } = await generateJSON({ system, messages: [{ role: 'user', content: prompt }], search: false, temperature: 0.3, maxTokens: 3000, timeoutMs: 40000 });
+  const { data, sources } = await generateJSON({ system, messages: [{ role: 'user', content: prompt }], search: false, maxTokens: 900, timeoutMs: 25000 });
 
   const list = Array.isArray(data) ? data : (data.programs || []);
   const seen = {};

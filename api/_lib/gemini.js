@@ -3,8 +3,12 @@
 // Primary: the Interactions API (https://aistudio.google.com/docs/get-started).
 // Fallback: the older generateContent call, used only if the Interactions call is refused.
 
-const INTERACTION_MODELS = ['gemini-4-hydrogen'];
-const LEGACY_MODELS = ['gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
+// Cheapest and fastest first. Thinking is kept at the minimum. Dearer models are not used.
+const INTERACTION_MODELS = [
+  { model: 'gemini-3.5-flash-lite', thinking: 'minimal' },
+  { model: 'gemini-3.1-flash-lite', thinking: '' }
+];
+const LEGACY_MODELS = ['gemini-2.5-flash-lite'];
 const API_REVISION = '2026-05-20';
 
 function getKey() {
@@ -60,10 +64,13 @@ function extractInteraction(data) {
   return { text: text.trim(), sources };
 }
 async function viaInteractions(model, opts, key) {
-  const body = { model, input: toInput(opts.messages), generation_config: { max_output_tokens: opts.maxTokens || 8192 } };
+  const m = typeof model === 'string' ? { model, thinking: '' } : model;
+  const gc = { max_output_tokens: opts.maxTokens || 800 };
+  if (m.thinking) gc.thinking_level = m.thinking;
+  const body = { model: m.model, input: toInput(opts.messages), generation_config: gc };
   if (opts.system) body.system_instruction = opts.system;
   if (opts.search) body.tools = [{ type: 'google_search' }];
-  const data = await post(base() + '/v1beta/interactions', { 'Api-Revision': API_REVISION }, body, key, opts.timeoutMs || 55000);
+  const data = await post(base() + '/v1beta/interactions', { 'Api-Revision': API_REVISION }, body, key, opts.timeoutMs || 30000);
   if (data && data.status === 'failed') { const e = new Error('The model could not finish this request.'); e.status = 502; throw e; }
   return extractInteraction(data);
 }
@@ -80,11 +87,11 @@ function extractLegacy(data) {
 async function viaLegacy(model, opts, key) {
   const body = {
     contents: opts.messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-    generationConfig: { maxOutputTokens: opts.maxTokens || 8192 }
+    generationConfig: { maxOutputTokens: opts.maxTokens || 800 }
   };
   if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
   if (opts.search) body.tools = [{ googleSearch: {} }];
-  const data = await post(base() + '/v1beta/models/' + model + ':generateContent', {}, body, key, opts.timeoutMs || 55000);
+  const data = await post(base() + '/v1beta/models/' + model + ':generateContent', {}, body, key, opts.timeoutMs || 30000);
   return extractLegacy(data);
 }
 
@@ -92,12 +99,12 @@ async function viaLegacy(model, opts, key) {
 async function generate(opts) {
   const key = getKey();
   if (!key) { const e = new Error('The Gemini key is not set on the server.'); e.status = 500; throw e; }
-  const forced = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : null;
+  const forced = process.env.GEMINI_MODEL ? [{ model: process.env.GEMINI_MODEL, thinking: '' }] : null;
   const attempts = [];
   (forced || INTERACTION_MODELS).forEach(m => attempts.push({ kind: 'i', model: m }));
   if (!forced) LEGACY_MODELS.forEach(m => attempts.push({ kind: 'l', model: m }));
   let lastErr = null, quota = false;
-  const deadline = Date.now() + (opts.timeoutMs || 55000);
+  const deadline = Date.now() + (opts.timeoutMs || 30000);
   for (const a of attempts) {
     const left = deadline - Date.now();
     if (left < 3000) break;
@@ -105,7 +112,7 @@ async function generate(opts) {
       const o = Object.assign({}, opts, { timeoutMs: left });
       const out = a.kind === 'i' ? await viaInteractions(a.model, o, key) : await viaLegacy(a.model, o, key);
       if (!out.text) { const e = new Error('The model returned no text.'); e.status = 502; throw e; }
-      out.model = a.model;
+      out.model = a.kind === 'i' ? a.model.model : a.model;
       return out;
     } catch (e) {
       lastErr = e;

@@ -11,7 +11,7 @@ module.exports = async function (req, res) {
   if (live && /check=1/.test(req.url || '')) {
     const t0 = Date.now();
     try {
-      const r = await generate({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], maxTokens: 1500, timeoutMs: 25000 });
+      const r = await generate({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], maxTokens: 40, timeoutMs: 20000 });
       out.check = 'working';
       out.reply = r.text.slice(0, 20);
       out.model = r.model;
