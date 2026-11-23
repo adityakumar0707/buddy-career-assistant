@@ -74,7 +74,8 @@ async function generate(opts) {
   if (opts.search) body.tools = [{ googleSearch: {} }];
   else if (opts.json) body.generationConfig.responseMimeType = 'application/json';
 
-  const models = workingModel ? [workingModel] : (process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : KNOWN_MODELS);
+  const order = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : [workingModel].concat(KNOWN_MODELS);
+  const models = order.filter(function (m, i) { return m && order.indexOf(m) === i; });
   let lastErr = null;
   for (const provider of providersFor(key)) {
     for (const model of models) {
@@ -87,13 +88,14 @@ async function generate(opts) {
       } catch (e) {
         lastErr = e;
         // 404 means this model name is not available: try the next one. 401/403/400 on a provider: try the other provider.
-        if (e.status === 404) continue;
+        if (e.status === 404 || e.status === 429 || e.status === 503) continue;
         if (e.status === 400 || e.status === 401 || e.status === 403) break;
         if (e.name === 'AbortError') { const t = new Error('Research took too long. Please try again.'); t.status = 504; throw t; }
         throw e;
       }
     }
   }
+  if (lastErr && lastErr.status === 429) { const q = new Error('Google says the free quota for this key is used up. Wait a minute and try again, or turn on billing for the Google project.'); q.status = 429; throw q; }
   throw lastErr || new Error('No model answered.');
 }
 

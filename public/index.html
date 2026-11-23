@@ -358,11 +358,15 @@ function markNot(id) { if (S.not.indexOf(id) < 0) S.not.push(id); S.interested =
 function profKey() { var p = S.p; return [p.field, p.degree, p.courseDecided, p.course, p.countryDecided, p.country].join('|'); }
 function startRows(force) {
   if (S.cacheKey !== profKey()) { S.rows = {}; S.insight = ''; S.cacheKey = profKey(); save(); }
-  THEMES.forEach(function (t) { if (!force && ((S.rows[t.id] || []).length || rowState[t.id] === 'loading' || rowState[t.id] === 'err')) return; loadRow(t.id); });
+  var todo = THEMES.filter(function (t) { return force || !((S.rows[t.id] || []).length || rowState[t.id] === 'loading' || rowState[t.id] === 'err'); });
+  todo.forEach(function (t) { rowState[t.id] = 'loading'; });
+  if (todo.length && tab === 'home') softRender();
+  // one row at a time, so a free-tier key is not hit with three searches at once
+  todo.reduce(function (chain, t) { return chain.then(function () { return loadRow(t.id); }); }, Promise.resolve());
 }
 function loadRow(theme) {
   rowState[theme] = 'loading'; if (tab === 'home') softRender();
-  api('shortlist', { profile: S.p, theme: theme, count: 6, exclude: notNames() }).then(function (r) {
+  return api('shortlist', { profile: S.p, theme: theme, count: 6, exclude: notNames() }).then(function (r) {
     r.programs.forEach(function (p) { S.progs[p.id] = p; });
     S.rows[theme] = r.programs.map(function (p) { return p.id; });
     if (theme === 'fit' && r.insight) S.insight = r.insight;
