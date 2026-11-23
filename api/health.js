@@ -9,10 +9,13 @@ module.exports = async function (req, res) {
   const out = { ok: true, live, env: process.env.VERCEL_ENV || 'local' };
   if (!live) out.hint = 'Key not found. Variable names that look related: ' + (Object.keys(process.env).filter(function (k) { return /GEM|GOOGLE|API|KEY/i.test(k); }).map(function (k) { return JSON.stringify(k); }).join(', ') || 'none');
   if (live && /check=1/.test(req.url || '')) {
+    const t0 = Date.now();
     try {
       const r = await generate({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], maxTokens: 1500, timeoutMs: 25000 });
       out.check = 'working';
       out.reply = r.text.slice(0, 20);
+      out.model = r.model;
+      out.ms = Date.now() - t0;
     } catch (e) { out.check = 'failed'; out.error = String(e.message || '').slice(0, 200); }
   }
   res.statusCode = 200;

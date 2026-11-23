@@ -2,6 +2,9 @@
 const { generateJSON } = require('./_lib/gemini');
 const { route, str, slug, httpsUrl, profileText, profileOf, SAFETY, STYLE } = require('./_lib/common');
 
+const CACHE = new Map();
+const TTL = 6 * 3600 * 1000;
+
 module.exports = route(async function (body) {
   const profile = profileOf(body.profile);
   const count = Math.min(Math.max(parseInt(body.count, 10) || 6, 2), 10);
@@ -13,9 +16,13 @@ module.exports = route(async function (body) {
   };
   const exclude = (Array.isArray(body.exclude) ? body.exclude : []).slice(0, 40).map(x => str(x, 160));
 
+  const ckey = JSON.stringify([profile, theme, count, exclude]);
+  const hit = CACHE.get(ckey);
+  if (hit && Date.now() - hit.t < TTL) return hit.v;
+
   const system =
     'You are Buddy, a careful study abroad advisor for Indian students applying to postgraduate programs. ' +
-    'Use Google Search to find real, currently offered postgraduate programs. Confirm each one on the university\'s official website. ' +
+    'Suggest only real postgraduate programs that you are confident exist and are currently offered. Never invent a program. ' +
     SAFETY + STYLE;
 
   const prompt =
@@ -27,13 +34,13 @@ module.exports = route(async function (body) {
     '3. If the country is decided, use only that country. If not, spread across at least 3 countries with no more than 3 programs from one country.\n' +
     '4. Respect the tuition limit if one is given. If you cannot confirm tuition, you may still include the program.\n' +
     '5. Never include these programs or any program from this list: ' + (exclude.length ? exclude.join(' | ') : 'none') + '.\n' +
-    '6. Use only programs you confirmed on an official university page in this search. "official_url" must be the program page you found, starting with https://.\n' +
+    '6. Only include programs you are sure exist. Do not state fees, deadlines or test scores. "official_url" is the university\'s own page for the program if you are sure of it, otherwise an empty string.\n' +
     '7. "reason" is ONE plain sentence of at most 28 words, explaining why this program fits THIS student, using their background or answers. Do not use labels like ambitious, target or safe.\n' +
-    '8. "insight" is one or two sentences with a real, useful observation from your research for this student, for example about how many of these programs ask for a test, or a timing point.\n\n' +
+    '8. "insight" is one short sentence with a useful observation for this student, or an empty string.\n\n' +
     'Return only JSON in this exact shape:\n' +
     '{"insight":"...","programs":[{"university":"...","program":"...","country":"...","city":"...","reason":"...","official_url":"https://..."}]}';
 
-  const { data, sources } = await generateJSON({ system, messages: [{ role: 'user', content: prompt }], search: true, temperature: 0.3, maxTokens: 8192, timeoutMs: 55000 });
+  const { data, sources } = await generateJSON({ system, messages: [{ role: 'user', content: prompt }], search: false, temperature: 0.3, maxTokens: 3000, timeoutMs: 40000 });
 
   const list = Array.isArray(data) ? data : (data.programs || []);
   const seen = {};
@@ -56,5 +63,8 @@ module.exports = route(async function (body) {
     });
   });
   if (!programs.length) { const e = new Error('Buddy could not find matching programs this time. Please try again.'); e.status = 502; throw e; }
-  return { insight: str(data.insight, 400), programs: programs.slice(0, count), sources: sources.slice(0, 8) };
+  const result = { insight: str(data.insight, 300), programs: programs.slice(0, count), sources: [] };
+  if (CACHE.size > 300) CACHE.clear();
+  CACHE.set(ckey, { t: Date.now(), v: result });
+  return result;
 });

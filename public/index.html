@@ -279,7 +279,7 @@ function homeV() {
   THEMES.forEach(function (t) {
     var st = rowState[t.id], list = (S.rows[t.id] || []).filter(function (id) { return S.not.indexOf(id) < 0 && !used[id]; });
     h += '<div class="sec"><h3>' + esc(t.title) + '</h3><p>' + esc(t.sub) + '</p>';
-    if (st === 'loading' && !list.length) h += '<div class="scroller">' + [1, 2, 3, 4].map(function () { return '<div class="sk"></div>'; }).join('') + '</div><div class="muted" style="font-size:13px">Buddy is reading official university pages. This can take up to a minute.</div>';
+    if (st === 'loading' && !list.length) h += '<div class="scroller">' + [1, 2, 3, 4].map(function () { return '<div class="sk"></div>'; }).join('') + '</div><div class="muted" style="font-size:13px">Buddy is picking programs for you. This takes a few seconds.</div>';
     else if (st === 'err' && !list.length) h += '<div class="rowerr"><span>' + esc(rowErr[t.id] || 'Could not load this row.') + '</span><button class="btn sm" data-retry="' + t.id + '">Try again</button></div>';
     else { list.forEach(function (id) { used[id] = 1; }); h += '<div class="scroller">' + list.map(cardV).join('') + '</div>'; if (!list.length) h += '<div class="muted">No programs here yet.</div>'; }
     h += '</div>';
@@ -351,7 +351,7 @@ function bind() {
   if ((el = $('gcon'))) el.onclick = function () { S.gmail = true; save(); render(); toast('Gmail connected (demo)'); };
   if ((el = $('gsim'))) el.onclick = function () { var a = S.apps.filter(function (x) { return !x.applied; })[0]; if (!a) { toast('Nothing left to mark'); return; } a.applied = true; save(); render(); toast('Buddy found a confirmation email and marked ' + S.progs[a.id].university + ' as Applied'); };
 }
-function toggleInt(id) { var i = S.interested.indexOf(id); if (i >= 0) S.interested.splice(i, 1); else { S.interested.push(id); toast('Saved'); } S.not = S.not.filter(function (x) { return x !== id; }); save(); render(); }
+function toggleInt(id) { var i = S.interested.indexOf(id); if (i >= 0) S.interested.splice(i, 1); else { S.interested.push(id); toast('Saved'); ensureDetail(id).catch(function () { }); } S.not = S.not.filter(function (x) { return x !== id; }); save(); render(); }
 function markNot(id) { if (S.not.indexOf(id) < 0) S.not.push(id); S.interested = S.interested.filter(function (x) { return x !== id; }); save(); closeAll(); render(); toast('Buddy will not suggest this again'); }
 
 /* ---------- rows (live research) ---------- */
@@ -361,8 +361,7 @@ function startRows(force) {
   var todo = THEMES.filter(function (t) { return force || !((S.rows[t.id] || []).length || rowState[t.id] === 'loading' || rowState[t.id] === 'err'); });
   todo.forEach(function (t) { rowState[t.id] = 'loading'; });
   if (todo.length && tab === 'home') softRender();
-  // one row at a time, so a free-tier key is not hit with three searches at once
-  todo.reduce(function (chain, t) { return chain.then(function () { return loadRow(t.id); }); }, Promise.resolve());
+  todo.forEach(function (t) { loadRow(t.id); });
 }
 function loadRow(theme) {
   rowState[theme] = 'loading'; if (tab === 'home') softRender();
@@ -388,16 +387,19 @@ function head(title) { return '<div class="sh-head"><h3>' + esc(title) + '</h3><
 function wireX(d, after) { d.querySelectorAll('[data-x]').forEach(function (b) { b.onclick = function () { closeOv(d); if (after) after(); }; }); }
 function loadingBody(lines) { var i = 0; var id = 'ld' + Date.now(); setTimeout(function tick() { var e = $(id); if (!e) return; i = (i + 1) % lines.length; e.textContent = lines[i]; setTimeout(tick, 4500); }, 4500); return '<div class="load"><div class="spin"></div><div id="' + id + '">' + esc(lines[0]) + '</div></div>'; }
 
+var inflight = {};
 function ensureDetail(id) {
   if (S.det[id]) return Promise.resolve(S.det[id]);
+  if (inflight[id]) return inflight[id];
   var p = S.progs[id];
-  return api('college', { university: p.university, program: p.program, url: p.url, profile: S.p }).then(function (d) { S.det[id] = d; save(); return d; });
+  inflight[id] = api('college', { university: p.university, program: p.program, url: p.url, profile: S.p }).then(function (d) { S.det[id] = d; save(); delete inflight[id]; return d; }, function (e) { delete inflight[id]; throw e; });
+  return inflight[id];
 }
 function openDetail(id) {
   var p = S.progs[id]; if (!p) return;
   var d = openOv(head(p.program) + '<div class="sh-body" id="db"></div>'); wireX(d);
   var body = d.querySelector('#db');
-  body.innerHTML = loadingBody(['Opening the official pages for ' + p.university + '...', 'Reading the admission requirements...', 'Checking deadlines and fees...']);
+  body.innerHTML = loadingBody(['Checking the official pages for ' + p.university + '. This takes up to a minute...', 'Reading the admission requirements...', 'Checking deadlines and fees...']) + '<p class="muted" style="text-align:center;font-size:13px">You can close this. Buddy keeps checking, and it will be ready when you come back.</p>';
   ensureDetail(id).then(function (det) { renderDetail(d, id, det); }).catch(function (e) {
     body.innerHTML = '<div class="rowerr"><span>' + esc(e.message) + '</span><button class="btn sm" id="rt">Try again</button></div>';
     body.querySelector('#rt').onclick = function () { closeOv(d); openDetail(id); };
@@ -407,7 +409,7 @@ function renderDetail(d, id, det) {
   var p = S.progs[id], on = S.interested.indexOf(id) >= 0, inApps = S.apps.some(function (a) { return a.id === id; });
   function v(x) { return x ? esc(x) : '<em>Not stated on the official page</em>'; }
   var rows = [['Deadline', det.deadline], ['Intake', det.cycle], ['Duration', det.duration], ['Entrance test', det.entrance_tests], ['English test', det.english_test], ['Who can apply', det.academic_requirement], ['Statement of purpose', det.sop_requirement], ['Recommendation letters', det.lor_count == null ? null : String(det.lor_count)], ['Application fee', det.application_fee], ['Tuition', det.tuition]];
-  var h = '<p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p>' + (det.highlights ? '<p class="muted" style="margin:0 0 14px">' + esc(det.highlights) + '</p>' : '') +
+  var h = (det.found === false ? '<div class="notice">Buddy could not confirm this exact program on an official page. Check the college website before you rely on anything here.</div>' : '') + '<p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p>' + (det.highlights ? '<p class="muted" style="margin:0 0 14px">' + esc(det.highlights) + '</p>' : '') +
     '<div class="kv">' + rows.map(function (r) { return '<div><b>' + r[0] + '</b><span>' + v(r[1]) + '</span></div>'; }).join('') + '</div>' +
     '<p class="muted" style="font-size:13px">Checked on ' + esc(det.checked) + '. Confirm on the official page before you apply.</p>' +
     (det.sources && det.sources.length ? '<p style="font-size:13px"><b>Sources</b><br>' + det.sources.map(function (s) { return '<a target="_blank" rel="noopener" href="' + esc(safeUrl(s.url)) + '">' + esc(s.title || s.url) + '</a>'; }).join('<br>') + '</p>' : '') +

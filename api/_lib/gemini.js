@@ -97,10 +97,15 @@ async function generate(opts) {
   (forced || INTERACTION_MODELS).forEach(m => attempts.push({ kind: 'i', model: m }));
   if (!forced) LEGACY_MODELS.forEach(m => attempts.push({ kind: 'l', model: m }));
   let lastErr = null, quota = false;
+  const deadline = Date.now() + (opts.timeoutMs || 55000);
   for (const a of attempts) {
+    const left = deadline - Date.now();
+    if (left < 3000) break;
     try {
-      const out = a.kind === 'i' ? await viaInteractions(a.model, opts, key) : await viaLegacy(a.model, opts, key);
+      const o = Object.assign({}, opts, { timeoutMs: left });
+      const out = a.kind === 'i' ? await viaInteractions(a.model, o, key) : await viaLegacy(a.model, o, key);
       if (!out.text) { const e = new Error('The model returned no text.'); e.status = 502; throw e; }
+      out.model = a.model;
       return out;
     } catch (e) {
       lastErr = e;

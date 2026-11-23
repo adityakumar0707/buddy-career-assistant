@@ -23,7 +23,7 @@ module.exports = route(async function (body) {
     'Each item has a short "title", a "kind" and a "note" with the exact requirement from the official page (for example a word limit or the number of letters). ' +
     'Allowed kinds: sop (the single main statement of purpose or personal statement, use this kind once only), resume, transcripts, lor (recommendation letters), tests (entrance or English tests), form (online application form), fee (application fee), other (anything else, including extra essays, portfolios, writing samples or interviews).\n\n' +
     'Return only JSON in this exact shape (use null when not stated):\n' +
-    '{"deadline":"text with the year if stated","cycle":"intake name","duration":"text","entrance_tests":"which entrance test is required or optional, such as GRE, GMAT or LSAT, and the policy","english_test":"accepted tests and minimum scores","academic_requirement":"minimum grade or degree needed","sop_requirement":"prompt, word or page limit","lor_count":number or null,"application_fee":"amount with currency","tuition":"amount with currency and what period it covers","documents":["..."],"checklist":[{"title":"...","kind":"sop","note":"..."}],"highlights":"one sentence on what the program offers, from the official page","sources":[{"title":"...","url":"https://..."}]}';
+    '{"found":true or false (false if you could not find this exact program on an official university page),"deadline":"text with the year if stated","cycle":"intake name","duration":"text","entrance_tests":"which entrance test is required or optional, such as GRE, GMAT or LSAT, and the policy","english_test":"accepted tests and minimum scores","academic_requirement":"minimum grade or degree needed","sop_requirement":"prompt, word or page limit","lor_count":number or null,"application_fee":"amount with currency","tuition":"amount with currency and what period it covers","documents":["..."],"checklist":[{"title":"...","kind":"sop","note":"..."}],"highlights":"one sentence on what the program offers, from the official page","sources":[{"title":"...","url":"https://..."}]}';
 
   const { data, sources } = await generateJSON({ system, messages: [{ role: 'user', content: prompt }], search: true, temperature: 0.2, maxTokens: 8192, timeoutMs: 55000 });
 
@@ -44,7 +44,7 @@ module.exports = route(async function (body) {
     lor_count: (typeof data.lor_count === 'number' && isFinite(data.lor_count)) ? data.lor_count : null,
     application_fee: nn(data.application_fee, 100), tuition: nn(data.tuition, 200),
     documents: (Array.isArray(data.documents) ? data.documents : []).slice(0, 12).map(d => str(d, 120)).filter(Boolean),
-    checklist, highlights: nn(data.highlights, 300),
+    found: data.found !== false, checklist, highlights: nn(data.highlights, 300),
     sources: srcs.slice(0, 6), checked: new Date().toISOString().slice(0, 10)
   };
 });
