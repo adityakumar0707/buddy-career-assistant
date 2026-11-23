@@ -187,6 +187,9 @@ textarea.field{min-height:140px;resize:vertical}
 .pc{padding:0;gap:0;overflow:hidden;flex:0 0 280px}
 .pc .im{height:136px;position:relative;background:linear-gradient(135deg,var(--g1,#2BB793),var(--g2,#83BDE4));background-size:cover;background-position:center}
 .pc .im::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(25,10,40,.05) 40%,rgba(25,10,40,.45))}
+.pc .im.logo,.dimg.logo{background-color:#fff;background-size:contain;background-repeat:no-repeat;background-position:center;background-origin:content-box;padding:14px}
+.pc .im.logo::after{display:none}
+.pc .im.logo .tag{background:#E9F6F1}
 .pc .im .ini{position:absolute;right:14px;bottom:8px;color:#fff;font-weight:800;font-size:30px;opacity:.85;z-index:1;letter-spacing:.02em}
 .pc .im.has .ini{display:none}
 .pc .im .tag{position:absolute;left:10px;top:10px;z-index:1;background:rgba(255,255,255,.94)}
@@ -198,6 +201,7 @@ textarea.field{min-height:140px;resize:vertical}
 .dimg{height:190px;border-radius:var(--r);background:linear-gradient(135deg,var(--g1,#2BB793),var(--g2,#83BDE4));background-size:cover;background-position:center;margin-bottom:14px;position:relative;overflow:hidden}
 .dimg .ini{position:absolute;right:16px;bottom:10px;color:#fff;font-weight:800;font-size:40px;opacity:.85}
 .dimg.has .ini{display:none}
+.dimg.logo{background-color:#fff;background-size:contain;background-repeat:no-repeat;background-position:center;background-origin:content-box;padding:14px;box-sizing:border-box;border:1px solid var(--line,#E7E1EE)}
 .skipbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1px dashed var(--line);border-radius:var(--r);padding:8px 12px;margin-bottom:14px;font-size:14px}
 .pill.pay{background:var(--sun)}
 .banner{background:linear-gradient(135deg,#e3f6ef,#eee6fa);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
@@ -398,7 +402,7 @@ function wikiFor(u, cb) {
   if (wikiCbs[u]) { wikiCbs[u].push(cb); return; }
   wikiCbs[u] = [cb]; wikiQ.push(u); wikiPump();
 }
-function paintIm(el, w) { if (w && w.img) { el.style.backgroundImage = 'url("' + String(w.img).replace(/"/g, '%22') + '")'; el.classList.add('has'); } }
+function paintIm(el, w) { if (w && w.img) { el.style.backgroundImage = 'url("' + String(w.img).replace(/"/g, '%22') + '")'; el.classList.add('has'); if (/\.svg|logo|crest|coat_of|seal|arms|emblem|wordmark|shield|banner/i.test(w.img)) el.classList.add('logo'); } }
 function hydrate() {
   document.querySelectorAll('.im[data-uni]:not(.has)').forEach(function (el) {
     var u = el.getAttribute('data-uni');
