@@ -6,6 +6,11 @@ const KNOWN_MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-
 let workingModel = null;
 let workingProvider = null;
 
+function getKey() {
+  var k = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
+  return String(k).trim().replace(/^["']|["']$/g, '').trim();
+}
+
 function baseStudio() { return process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com'; }
 function baseVertex() { return process.env.GEMINI_VERTEX_BASE_URL || process.env.GEMINI_BASE_URL || 'https://aiplatform.googleapis.com'; }
 
@@ -59,7 +64,7 @@ function extract(data) {
 
 // opts: { system, messages:[{role,content}], search:boolean, json:boolean, temperature, maxTokens, timeoutMs }
 async function generate(opts) {
-  const key = process.env.GEMINI_API_KEY;
+  const key = getKey();
   if (!key) { const e = new Error('The Gemini key is not set on the server.'); e.status = 500; throw e; }
   const body = {
     contents: opts.messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
@@ -117,4 +122,4 @@ async function generateJSON(opts) {
   return { data, sources: out.sources };
 }
 
-module.exports = { generate, generateJSON, parseJSON, redact };
+module.exports = { getKey, generate, generateJSON, parseJSON, redact };
