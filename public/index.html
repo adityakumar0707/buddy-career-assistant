@@ -624,7 +624,11 @@ function openCheckout(done) {
     }, 1200);
   };
 }
-function ckList(id) { var det = S.det[id]; return det && det.checklist && det.checklist.length ? det.checklist : DEFAULT_CHECK; }
+function ckList(id) {
+  var det = S.det[id], l = det && det.checklist && det.checklist.length ? det.checklist : DEFAULT_CHECK;
+  if (!l.some(function (c) { return c.kind === 'sop'; })) l = l.concat([{ kind: 'sop', title: 'Statement of purpose', note: 'Buddy helps you write it from your own story.' }]);
+  return l;
+}
 function ckKey(c) { return c.kind === 'other' ? 'o:' + c.title : c.kind; }
 function progress(a) { var l = ckList(a.id), k = l.filter(function (c) { return a.done[ckKey(c)]; }).length; return { n: l.length, k: k }; }
 function openChecklist(id) {
