@@ -387,18 +387,18 @@ function buildRows(p, not, customIds) {
     var cats = mapped.filter(function (c) { return c !== exclude; }), pool = [];
     var lists = cats.map(function (c) { var l = rankProgs(ofCat(c).filter(function (x) { return !country || x.country === country; }), p); return l.length ? l : rankProgs(ofCat(c), p); });
     for (var i = 0; i < 3; i++) lists.forEach(function (l) { if (l[i]) pool.push(l[i]); });
-    return { id: 'related', title: 'Related courses for your background', sub: 'Other degrees that suit ' + (FIELD_SHORT[fk] || 'your') + ' graduates', ids: ids(pool).slice(0, 8) };
+    return { id: 'related', title: 'Related courses for your background', sub: 'Other degrees that suit ' + (FIELD_SHORT[fk] || 'your') + ' graduates', ids: ids(pool).slice(0, 14) };
   }
 
   if (cat) {
     var a = rankProgs(ofCat(cat).filter(function (x) { return !country || x.country === country; }), p), sub = CATS[cat].label + (country ? ' in ' + country : ' around the world');
     if (country && a.length < 4) {
       var more = rankProgs(ofCat(cat).filter(function (x) { return x.country !== country; }), p);
-      a = a.concat(more).slice(0, 8); sub = 'Few ' + CATS[cat].label + ' programs matched ' + country + ', so Buddy added nearby options';
+      a = a.concat(more).slice(0, 14); sub = 'Few ' + CATS[cat].label + ' programs matched ' + country + ', so Buddy added nearby options';
     }
-    rows.push({ id: 'fit', title: 'Picked for you', sub: sub, ids: ids(a).slice(0, 8) });
-    if (country) rows.push({ id: 'other', title: 'The same course in other countries', sub: CATS[cat].label, ids: ids(rankProgs(ofCat(cat).filter(function (x) { return x.country !== country; }), p)).slice(0, 8) });
-    else rows.push({ id: 'cheap', title: 'Lower cost places to study this course', sub: 'Countries that usually cost less overall', ids: ids(rankProgs(ofCat(cat).filter(function (x) { return (CN[x.country] || {}).cost <= 2; }), p)).slice(0, 8) });
+    rows.push({ id: 'fit', title: 'Picked for you', sub: sub, ids: ids(a).slice(0, 14) });
+    if (country) rows.push({ id: 'other', title: 'The same course in other countries', sub: CATS[cat].label, ids: ids(rankProgs(ofCat(cat).filter(function (x) { return x.country !== country; }), p)).slice(0, 14) });
+    else rows.push({ id: 'cheap', title: 'Lower cost places to study this course', sub: 'Countries that usually cost less overall', ids: ids(rankProgs(ofCat(cat).filter(function (x) { return (CN[x.country] || {}).cost <= 2; }), p)).slice(0, 14) });
     rows.push(relatedRow(cat));
   } else if (custom) {
     rows.push({ id: 'custom', llm: true, title: 'Picked for you', sub: 'Programs for ' + p.course, ids: customIds || [] });
@@ -407,7 +407,7 @@ function buildRows(p, not, customIds) {
     mapped.slice(0, 3).forEach(function (c) {
       var l = rankProgs(ofCat(c).filter(function (x) { return !country || x.country === country; }), p);
       if (l.length < 4) l = l.concat(rankProgs(ofCat(c).filter(function (x) { return country && x.country !== country; }), p));
-      rows.push({ id: 'cat-' + c, title: CATS[c].label, sub: CATS[c].pitch, ids: ids(l).slice(0, 8) });
+      rows.push({ id: 'cat-' + c, title: CATS[c].label, sub: CATS[c].pitch, ids: ids(l).slice(0, 14) });
     });
   }
   return rows;

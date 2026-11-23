@@ -178,12 +178,46 @@ textarea.field{min-height:140px;resize:vertical}
 #dock.isfull .launch,#dock.isfull .nudge{display:none}
 @keyframes pop{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 @media (max-width:760px){.panel{right:8px;left:8px;width:auto;max-width:none;bottom:76px;height:min(70vh,560px)}.launch{right:12px;bottom:12px}.nudge{right:12px;bottom:76px}}
+
+/* v3: bottom left dock, cards with photos, explore, splash */
+.launch{left:20px;right:auto}
+.panel{left:20px;right:auto}
+.nudge{left:20px;right:auto}
+@media (max-width:760px){.panel{left:8px;right:8px}.launch{left:12px;right:auto}.nudge{left:12px;right:auto}}
+.pc{padding:0;gap:0;overflow:hidden;flex:0 0 280px}
+.pc .im{height:136px;position:relative;background:linear-gradient(135deg,var(--g1,#2BB793),var(--g2,#83BDE4));background-size:cover;background-position:center}
+.pc .im::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(25,10,40,.05) 40%,rgba(25,10,40,.45))}
+.pc .im .ini{position:absolute;right:14px;bottom:8px;color:#fff;font-weight:800;font-size:30px;opacity:.85;z-index:1;letter-spacing:.02em}
+.pc .im.has .ini{display:none}
+.pc .im .tag{position:absolute;left:10px;top:10px;z-index:1;background:rgba(255,255,255,.94)}
+.pc .bd{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-top:6px}
+.grid .pc{flex:none}
+.sech{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.sech .link{white-space:nowrap;font-size:14px;color:var(--primary-dark);font-weight:600}
+.dimg{height:190px;border-radius:var(--r);background:linear-gradient(135deg,var(--g1,#2BB793),var(--g2,#83BDE4));background-size:cover;background-position:center;margin-bottom:14px;position:relative;overflow:hidden}
+.dimg .ini{position:absolute;right:16px;bottom:10px;color:#fff;font-weight:800;font-size:40px;opacity:.85}
+.dimg.has .ini{display:none}
+.skipbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1px dashed var(--line);border-radius:var(--r);padding:8px 12px;margin-bottom:14px;font-size:14px}
+.pill.pay{background:var(--sun)}
+.banner{background:linear-gradient(135deg,#e3f6ef,#eee6fa);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+#splash{position:fixed;inset:0;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding-top:250px;background:linear-gradient(135deg,#e3f6ef 0%,#eee6fa 55%,#dcecf8 100%);transition:opacity .7s .25s}
+#splash.on{display:flex}
+#splash.out{opacity:0;pointer-events:none}
+.sp-name{font-size:38px;font-weight:800;letter-spacing:-.02em;animation:fadeup .8s .5s both}
+.sp-tag{color:var(--muted);margin-top:4px;animation:fadeup .8s .8s both}
+#sporb{position:fixed;z-index:201;left:50%;top:50%;width:140px;height:140px;margin:-190px 0 0 -70px;border-radius:50%;display:none;background:radial-gradient(circle at 35% 30%,#fff 0,#b9efdc 28%,var(--mint) 62%,var(--primary) 100%);box-shadow:0 0 0 14px #ffffff55,0 0 0 30px #ffffff33,0 20px 60px rgba(31,130,104,.35)}
+#sporb.on{display:block;animation:orbin 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes orbin{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#sporb.on,.sp-name,.sp-tag{animation:none}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="ovs"></div>
 <div id="dock"></div>
+<div id="splash"><div class="sp-name">Buddy</div><div class="sp-tag">Your study abroad assistant</div></div><div id="sporb"></div>
 <div id="toast" class="toast hide"></div>
 <script src="/catalogue.js"></script>
 <script>
@@ -263,7 +297,7 @@ function render() {
   if (S.step === 'welcome') a.innerHTML = welcomeV();
   else if (S.step === 'onboard') a.innerHTML = onboardV();
   else a.innerHTML = mainV();
-  bind();
+  bind(); hydrate();
   if (S.step === 'main') { dockOn(); startRows(); } else dockOff();
 }
 function welcomeV() {
@@ -295,11 +329,12 @@ function mainV() {
   var apps = S.apps.length, saved = S.interested.length;
   var h = '<div class="top"><div class="wrap"><div class="logo"><i></i>Buddy</div><div class="tabs">' +
     '<button class="tab' + (tab === 'home' ? ' on' : '') + '" data-tab="home">Home</button>' +
+    '<button class="tab' + (tab === 'explore' ? ' on' : '') + '" data-tab="explore">Explore</button>' +
     '<button class="tab' + (tab === 'saved' ? ' on' : '') + '" data-tab="saved">Saved<small>' + saved + '</small></button>' +
     '<button class="tab' + (tab === 'apps' ? ' on' : '') + '" data-tab="apps">Applications<small>' + apps + '/' + MAX_APPS + '</small></button></div>' +
     '<div class="me"><span>' + esc(first()) + '</span><div class="avatar">' + esc(first().charAt(0).toUpperCase()) + '</div><button class="link" id="reset">Start over</button></div></div></div><div class="wrap">';
   if (!LIVE) h += '<div class="notice" style="margin-top:16px">Live research is switched off because the server has no Gemini key. Add GEMINI_API_KEY and redeploy.</div>';
-  if (tab === 'home') h += homeV(); else if (tab === 'saved') h += savedV(); else h += appsV();
+  if (tab === 'home') h += homeV(); else if (tab === 'explore') h += exploreV(); else if (tab === 'saved') h += savedV(); else h += appsV();
   return h + '</div>';
 }
 function homeV() {
@@ -311,7 +346,7 @@ function homeV() {
   rowsNow().forEach(function (r) {
     var list = r.ids.filter(function (id) { return S.not.indexOf(id) < 0 && !used[id] && P(id); });
     if (!list.length && !r.llm) return;
-    h += '<div class="sec"><h3>' + esc(r.title) + '</h3><p>' + esc(r.sub) + '</p>';
+    h += '<div class="sec"><div class="sech"><h3>' + esc(r.title) + '</h3>' + (list.length ? '<button class="link" data-all="' + rowCat(r) + '">See all</button>' : '') + '</div><p>' + esc(r.sub) + '</p>';
     if (r.llm && !list.length) {
       if (customState === 'err') h += '<div class="rowerr"><span>' + esc(customErr || 'Could not load this row.') + '</span><button class="btn sm" data-retry="1">Try again</button></div>';
       else h += '<div class="scroller">' + [1, 2, 3, 4].map(function () { return '<div class="sk"></div>'; }).join('') + '</div><div class="muted" style="font-size:13px">Buddy is finding programs for your course. This takes a few seconds.</div>';
@@ -322,12 +357,81 @@ function homeV() {
   h += '<footer>Buddy checks official university pages when you ask it to. Always confirm deadlines on the college website before you apply.</footer>';
   return h;
 }
+function hue(str) { var h = 0; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360; return h; }
+function initials(u) { return String(u).replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(function (w) { return w && !/^(of|the|and|for|in)$/i.test(w); }).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join(''); }
+function imStyle(u) { var h = hue(u); return '--g1:hsl(' + h + ',48%,36%);--g2:hsl(' + ((h + 50) % 360) + ',58%,54%)'; }
 function cardV(id) {
   var p = P(id); if (!p) return '';
   var on = S.interested.indexOf(id) >= 0;
-  return '<div class="pc" data-open="' + id + '"><span class="tag">' + esc(p.country) + (p.city ? ' | ' + esc(p.city) : '') + '</span><h4>' + esc(p.program) + '</h4><div class="sub">' + esc(p.university) + '</div><div class="why">' + esc(p.reason || reasonOf(p, S.p)) + '</div>' +
-    '<div class="acts"><button class="yes' + (on ? ' on' : '') + '" data-int="' + id + '">' + (on ? 'Saved' : 'Interested') + '</button><button class="no" data-not="' + id + '">Not interested</button></div></div>';
+  return '<div class="pc" data-open="' + id + '"><div class="im" data-uni="' + esc(p.university) + '" style="' + imStyle(p.university) + '"><span class="tag">' + esc(p.country) + (p.city ? ' | ' + esc(p.city) : '') + '</span><span class="ini">' + esc(initials(p.university)) + '</span></div><div class="bd"><h4>' + esc(p.program) + '</h4><div class="sub">' + esc(p.university) + '</div><div class="why">' + esc(p.reason || reasonOf(p, S.p)) + '</div>' +
+    '<div class="acts"><button class="yes' + (on ? ' on' : '') + '" data-int="' + id + '">' + (on ? 'Saved' : 'Interested') + '</button><button class="no" data-not="' + id + '">Not interested</button></div></div></div>';
 }
+/* college photos and summaries: Wikipedia, loaded in the browser as cards come into view, then remembered */
+var WIKI = {}; try { WIKI = JSON.parse(localStorage.getItem('buddy_wiki_v1')) || {}; } catch (e) { WIKI = {}; }
+var wikiCbs = {}, wikiQ = [], wikiRun = 0, imObs = null;
+function wikiSave() { try { localStorage.setItem('buddy_wiki_v1', JSON.stringify(WIKI)); } catch (e) { } }
+function sameName(a, b) {
+  var stop = { university: 1, school: 1, college: 1, the: 1, institute: 1, and: 1, business: 1, management: 1, law: 1, technology: 1, science: 1, sciences: 1 };
+  function t(x) { return String(x).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 2 && !stop[w]; }); }
+  var A = t(a), B = t(b); return A.some(function (w) { return B.indexOf(w) >= 0; });
+}
+function wikiFetch(u) {
+  var url = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=1&gsrsearch=' + encodeURIComponent(u) + '&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=560&exintro=1&explaintext=1&exsentences=2';
+  return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+    var pages = j && j.query && j.query.pages ? Object.keys(j.query.pages).map(function (k) { return j.query.pages[k]; }) : [], pg = pages[0];
+    if (!pg || !sameName(u, pg.title)) return { img: '', ex: '' };
+    return { img: (pg.thumbnail && pg.thumbnail.source) || '', ex: clean(pg.extract || '').slice(0, 320) };
+  });
+}
+function wikiPump() {
+  while (wikiRun < 4 && wikiQ.length) {
+    (function (u) {
+      wikiRun++;
+      wikiFetch(u).then(function (w) { WIKI[u] = w; wikiSave(); return w; }, function () { return { img: '', ex: '' }; }).then(function (w) {
+        wikiRun--; (wikiCbs[u] || []).forEach(function (cb) { cb(w); }); delete wikiCbs[u]; wikiPump();
+      });
+    })(wikiQ.shift());
+  }
+}
+function wikiFor(u, cb) {
+  if (WIKI[u]) return cb(WIKI[u]);
+  if (wikiCbs[u]) { wikiCbs[u].push(cb); return; }
+  wikiCbs[u] = [cb]; wikiQ.push(u); wikiPump();
+}
+function paintIm(el, w) { if (w && w.img) { el.style.backgroundImage = 'url("' + String(w.img).replace(/"/g, '%22') + '")'; el.classList.add('has'); } }
+function hydrate() {
+  document.querySelectorAll('.im[data-uni]:not(.has)').forEach(function (el) {
+    var u = el.getAttribute('data-uni');
+    if (WIKI[u]) { paintIm(el, WIKI[u]); return; }
+    if (!('IntersectionObserver' in window)) { wikiFor(u, function (w) { paintIm(el, w); }); return; }
+    if (!imObs) imObs = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { imObs.unobserve(e.target); wikiFor(e.target.getAttribute('data-uni'), function (w) { paintIm(e.target, w); }); } }); }, { rootMargin: '240px' });
+    imObs.observe(el);
+  });
+}
+/* explore: every program in the catalogue */
+var EX = { q: '', cat: '', country: '', n: 24 };
+function exList() {
+  var q = EX.q.toLowerCase();
+  var l = PLIST.filter(function (x) { return S.not.indexOf(x.id) < 0 && (!EX.cat || x.cat === EX.cat) && (!EX.country || x.country === EX.country) && (!q || (x.university + ' ' + x.program + ' ' + x.city + ' ' + x.country).toLowerCase().indexOf(q) >= 0); });
+  return rankProgs(l, S.p);
+}
+function exRes() {
+  var l = exList();
+  return '<div class="muted" style="margin:4px 0 10px;font-size:14px">' + l.length + ' programs' + (l.length > EX.n ? ', showing ' + EX.n : '') + '. Sorted for your answers.</div>' +
+    (l.length ? '<div class="grid">' + l.slice(0, EX.n).map(function (x) { return cardV(x.id); }).join('') + '</div>' : '<div class="rowerr">Nothing matches. Try another course or country.</div>') +
+    (l.length > EX.n ? '<div style="text-align:center;margin:18px 0"><button class="btn ghost" id="exmore">Show more</button></div>' : '');
+}
+function exploreV() {
+  var countries = Object.keys(CN);
+  return '<div class="sec"><h3>Explore all colleges</h3><p>' + PLIST.length + ' programs across ' + countries.length + ' countries. Search, or filter by course and country.</p></div>' +
+    '<input id="exq" class="field" style="margin:0 0 6px" placeholder="Search by college, course or city" value="' + esc(EX.q) + '">' +
+    '<div class="chips" style="margin:8px 0 4px"><button class="chip' + (!EX.cat ? ' on' : '') + '" data-excat="">All courses</button>' + Object.keys(CATS).map(function (c) { return '<button class="chip' + (EX.cat === c ? ' on' : '') + '" data-excat="' + c + '">' + esc(CATS[c].label) + '</button>'; }).join('') + '</div>' +
+    '<div class="chips" style="margin:4px 0 8px"><button class="chip' + (!EX.country ? ' on' : '') + '" data-excountry="">All countries</button>' + countries.map(function (c) { return '<button class="chip' + (EX.country === c ? ' on' : '') + '" data-excountry="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+    '<div id="exres">' + exRes() + '</div>';
+}
+function exPaint() { var r = $('exres'); if (r) { r.innerHTML = exRes(); bind(); hydrate(); } }
+function goExplore(cat, country) { EX.q = ''; EX.cat = cat || ''; EX.country = country || ''; EX.n = 24; tab = 'explore'; closeChat(); render(); window.scrollTo(0, 0); }
+function rowCat(r) { var c = ''; (r.ids || []).forEach(function (id) { var p = P(id); if (p && p.cat) c = (c === '' ? p.cat : (c === p.cat ? c : '*')); }); return c === '*' ? '' : c; }
 function savedV() {
   var h = '<div class="sec"><h3>Your saved colleges</h3><p>Colleges you marked Interested.</p></div>';
   if (!S.interested.length) h += '<div class="rowerr">Nothing saved yet. Tap Interested on any college on Home.</div>';
@@ -337,11 +441,20 @@ function savedV() {
 }
 function appsV() {
   var h = '<div class="sec"><h3>Your applications</h3><p>Up to ' + MAX_APPS + ' colleges, so you apply to fewer and better. Your first full kit is free.</p></div>';
+  if (S.paid) h += '<div class="banner"><div><b>Paid plan is on.</b><div class="muted" style="font-size:14px">Statement of purpose, interview prep, reminders and the manager are open for every college.</div></div><span class="pill ok">Paid</span></div>';
+  else h += '<div class="banner"><div><b>' + (S.freeId ? 'Your free kit is used.' : 'Your first full kit is free.') + '</b><div class="muted" style="font-size:14px">' + (S.freeId ? 'One flat fee unlocks the same kit for your other colleges.' : 'It is used when you finish your first statement of purpose.') + '</div></div>' + (S.freeId ? '<button class="btn sm" id="upg">Unlock all colleges</button>' : '') + '</div>';
   if (!S.apps.length) h += '<div class="rowerr">No applications yet. Open a college and choose Start application.</div>';
   S.apps.forEach(function (a) {
     var p = P(a.id); if (!p) return; var pr = progress(a);
-    h += '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span><div style="margin-top:6px">' + (a.applied ? '<span class="pill ok">Applied</span>' : '<span class="pill">' + (pr.n ? pr.k + ' of ' + pr.n + ' steps done' : 'Not started') + '</span>') + (S.freeId === a.id ? ' <span class="pill ok">Free kit</span>' : (!S.paid && S.freeId ? ' <span class="lock">Paid</span>' : '')) + '</div></div><button class="btn sm" data-check="' + a.id + '">Open checklist</button></div>';
+    var kit = S.paid ? '<span class="pill ok">Paid</span>' : (S.freeId === a.id ? '<span class="pill ok">Free kit</span>' : (S.freeId ? '<span class="lock">Paid</span>' : '<span class="pill">Free kit available</span>'));
+    h += '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span><div style="margin-top:6px">' + (a.applied ? '<span class="pill ok">Applied</span>' : '<span class="pill">' + pr.k + ' of ' + pr.n + ' steps done</span>') + ' ' + kit + '</div>' +
+      (S.paid ? '<label style="display:block;margin-top:8px;font-size:13px;color:var(--muted)">Reminder date <input type="date" data-rem="' + a.id + '" value="' + esc(a.remind || '') + '" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px"></label>' : '') +
+      '</div><button class="btn sm" data-check="' + a.id + '">Open checklist</button></div>';
   });
+  if (S.paid) {
+    var rem = S.apps.filter(function (a) { return a.remind && !a.applied; }).sort(function (x, y) { return x.remind < y.remind ? -1 : 1; });
+    h += '<div class="sec"><h3>Reminders</h3><p>Buddy emails you 7 days and 1 day before each date you set (demo).</p></div>' + (rem.length ? rem.map(function (a) { return '<div class="ap"><div class="i"><b>' + esc(a.remind) + '</b> | ' + esc(P(a.id).university) + '</div></div>'; }).join('') : '<div class="rowerr">No reminders yet. Pick a date on any application above.</div>');
+  }
   h += '<div class="ap" style="background:var(--lav)"><div class="i"><h4>Gmail</h4><span class="muted">' + (S.gmail ? 'Connected (demo). Buddy marks an application as Applied when it sees the confirmation email.' : 'Connect Gmail so Buddy can mark applications as Applied from the confirmation emails you receive.') + '</span></div>' +
     (S.gmail ? '<button class="btn ghost sm" id="gsim">Simulate a confirmation email</button>' : '<button class="btn sm" id="gcon">Connect (demo)</button>') + '</div>';
   return h;
@@ -368,19 +481,26 @@ function bind() {
     if (s === 1) { if ((t = $('ocourse').value.trim())) { S.p.course = t; S.p.courseDecided = 'yes'; } }
     if (s === 2) { if ((t = $('ocountry').value.trim())) { S.p.country = t; S.p.countryDecided = 'yes'; } S.step = 'main'; S.rows = {}; S.insight = ''; S.custom = []; S.customKey = ''; customState = ''; tab = 'home'; }
     else S.obStep++;
-    save(); render();
+    save(); render(); if (s === 2) runSplash('Finding colleges for you');
   };
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); render(); window.scrollTo(0, 0); }; });
   if ((el = $('reset'))) el.onclick = function () { if (confirm('Start over? Your saved colleges and drafts in this browser will be cleared.')) reset(); };
   if ((el = $('orb'))) el.onclick = function () { openChat(undefined, true); };
   if ((el = $('ask'))) el.onclick = function () { openChat(undefined, true); };
   document.querySelectorAll('[data-pr]').forEach(function (b) { b.onclick = function () { openChat(b.getAttribute('data-pr'), true); }; });
+  document.querySelectorAll('[data-all]').forEach(function (b) { b.onclick = function () { goExplore(b.getAttribute('data-all'), S.p.countryDecided === 'yes' ? normCountry(S.p.country) : ''); }; });
+  document.querySelectorAll('[data-excat]').forEach(function (b) { b.onclick = function () { EX.cat = b.getAttribute('data-excat'); EX.n = 24; render(); }; });
+  document.querySelectorAll('[data-excountry]').forEach(function (b) { b.onclick = function () { EX.country = b.getAttribute('data-excountry'); EX.n = 24; render(); }; });
+  if ((el = $('exq'))) el.oninput = function () { EX.q = this.value; EX.n = 24; clearTimeout(exPaint.t); exPaint.t = setTimeout(exPaint, 200); };
+  if ((el = $('exmore'))) el.onclick = function () { EX.n += 24; exPaint(); };
   document.querySelectorAll('[data-retry]').forEach(function (b) { b.onclick = function () { customState = ''; ensureCustom(); }; });
   document.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
   document.querySelectorAll('[data-int]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); toggleInt(b.getAttribute('data-int')); }; });
   document.querySelectorAll('[data-not]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); markNot(b.getAttribute('data-not')); }; });
   document.querySelectorAll('[data-restore]').forEach(function (b) { b.onclick = function () { S.not = S.not.filter(function (x) { return x !== b.getAttribute('data-restore'); }); save(); render(); }; });
   document.querySelectorAll('[data-check]').forEach(function (b) { b.onclick = function () { openChecklist(b.getAttribute('data-check')); }; });
+  if ((el = $('upg'))) el.onclick = function () { openCheckout(function () { }); };
+  document.querySelectorAll('[data-rem]').forEach(function (inp) { inp.onchange = function () { var a = S.apps.filter(function (x) { return x.id === inp.getAttribute('data-rem'); })[0]; if (a) { a.remind = inp.value; save(); softRender(); toast('Reminder set'); } }; });
   if ((el = $('gcon'))) el.onclick = function () { S.gmail = true; save(); render(); toast('Gmail connected (demo)'); };
   if ((el = $('gsim'))) el.onclick = function () { var a = S.apps.filter(function (x) { return !x.applied; })[0]; if (!a) { toast('Nothing left to mark'); return; } a.applied = true; save(); render(); toast('Buddy found a confirmation email and marked ' + P(a.id).university + ' as Applied'); };
 }
@@ -405,7 +525,7 @@ function ensureCustom() {
     if (tab === 'home' && S.step === 'main') softRender();
   }).catch(function (e) { customState = 'err'; customErr = e.message; if (tab === 'home' && S.step === 'main') softRender(); });
 }
-function softRender() { var y = window.scrollY, sc = Array.prototype.map.call(document.querySelectorAll('.scroller'), function (s) { return s.scrollLeft; }); $('app').innerHTML = mainV(); bind(); window.scrollTo(0, y); document.querySelectorAll('.scroller').forEach(function (s, i) { s.scrollLeft = sc[i] || 0; }); }
+function softRender() { var y = window.scrollY, sc = Array.prototype.map.call(document.querySelectorAll('.scroller'), function (s) { return s.scrollLeft; }); $('app').innerHTML = mainV(); bind(); hydrate(); window.scrollTo(0, y); document.querySelectorAll('.scroller').forEach(function (s, i) { s.scrollLeft = sc[i] || 0; }); }
 
 /* ---------- overlays ---------- */
 function openOv(html, mid) {
@@ -437,7 +557,7 @@ function paintDetail(d, id) {
   var p = P(id), det = S.det[id], on = S.interested.indexOf(id) >= 0, inApps = S.apps.some(function (a) { return a.id === id; }), cn = CN[p.country] || {};
   function v(x) { return x ? esc(x) : '<em>Not stated on the official page</em>'; }
   var rows = [];
-  var h = '<p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p><p style="margin:0 0 14px">' + esc(p.reason || reasonOf(p, S.p)) + '</p>';
+  var h = '<div class="dimg" id="dimg" data-uni="' + esc(p.university) + '" style="' + imStyle(p.university) + '"><span class="ini">' + esc(initials(p.university)) + '</span></div><p style="margin:0 0 4px"><b>' + esc(p.university) + '</b> | ' + esc(p.city ? p.city + ', ' : '') + esc(p.country) + '</p><div id="dabout" class="muted" style="font-size:14px;margin:0 0 8px"></div><p style="margin:0 0 14px">' + esc(p.reason || reasonOf(p, S.p)) + '</p>';
   if (det) {
     rows = [['Deadline', det.deadline], ['Intake', det.cycle], ['Duration', det.duration], ['Entrance test', det.entrance_tests], ['English test', det.english_test], ['Who can apply', det.academic_requirement], ['Statement of purpose', det.sop_requirement], ['Recommendation letters', det.lor_count == null ? null : String(det.lor_count)], ['Application fee', det.application_fee], ['Tuition', det.tuition]];
     h = (det.found === false ? '<div class="notice">Buddy could not confirm this exact program on an official page. Check the college website before you rely on anything here.</div>' : '') + h + (det.highlights ? '<p class="muted" style="margin:0 0 14px">' + esc(det.highlights) + '</p>' : '') +
@@ -451,6 +571,7 @@ function paintDetail(d, id) {
   }
   h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn' + (det ? '' : ' ghost') + '" id="d-app"' + (inApps ? ' disabled' : '') + '>' + (inApps ? 'In your applications' : 'Start application') + '</button><button class="btn ghost" id="d-int">' + (on ? 'Saved' : 'Interested') + '</button><button class="btn ghost" id="d-not">Not interested</button><button class="btn ghost" id="d-dl">Download research</button></div>';
   var b = d.querySelector('#db'); b.innerHTML = h;
+  wikiFor(p.university, function (w) { var im = b.querySelector('#dimg'), ab = b.querySelector('#dabout'); if (im) paintIm(im, w); if (ab && w && w.ex) ab.textContent = w.ex + ' (Source: Wikipedia)'; });
   var chk = b.querySelector('#d-chk');
   if (chk) chk.onclick = function () {
     b.innerHTML = loadingBody(['Checking the official pages for ' + p.university + '...', 'Reading the admission requirements...', 'Checking deadlines and fees...']) + '<p class="muted" style="text-align:center;font-size:13px">You can close this. Buddy keeps checking and it will be ready when you come back.</p>';
@@ -475,11 +596,29 @@ function paintDetail(d, id) {
 }
 
 /* ---------- checklist ---------- */
+function claimFree(id) {
+  if (S.freeId || S.paid) return;
+  S.freeId = id; save(); toast('Your free kit is now on ' + P(id).university);
+  if (tab === 'apps') softRender();
+}
 function gate(id, then) {
-  if (S.paid || S.freeId === id) return then();
-  if (!S.freeId) { var d = openOv(head('Use your free kit here?') + '<div class="sh-body"><p>Your first full application kit is free: the statement of purpose, the checklist and interview prep. You can use it for one college. Use it for <b>' + esc(P(id).university) + '</b>?</p><div style="display:flex;gap:8px"><button class="btn" id="y">Yes, use it here</button><button class="btn ghost" data-x>Not yet</button></div></div>', true); wireX(d); d.querySelector('#y').onclick = function () { S.freeId = id; save(); closeOv(d); render(); then(); }; return; }
-  var q = openOv(head('This college needs the paid plan') + '<div class="sh-body"><p>Your free kit is used on <b>' + esc(P(S.freeId).university) + '</b>. One flat fee unlocks the statement of purpose, interview prep and deadline reminders for all your colleges (up to ' + MAX_APPS + ').</p><p class="muted" style="font-size:13px">Prototype only. No payment is taken.</p><div style="display:flex;gap:8px"><button class="btn" id="pay">Unlock (demo)</button><button class="btn ghost" data-x>Not now</button></div></div>', true); wireX(q);
-  q.querySelector('#pay').onclick = function () { S.paid = true; save(); closeOv(q); render(); toast('Unlocked (demo)'); then(); };
+  if (S.paid || S.freeId === id || !S.freeId) return then();
+  openCheckout(then);
+}
+function openCheckout(done) {
+  var d = openOv(head('Unlock Buddy for all your colleges') + '<div class="sh-body" id="ckb"></div>', true); wireX(d);
+  var b = d.querySelector('#ckb'), fp = S.freeId && P(S.freeId), free = fp ? fp.university : 'one college';
+  b.innerHTML = '<p>Your free kit is on <b>' + esc(free) + '</b>. One flat fee unlocks the same kit for every other college, up to ' + MAX_APPS + '.</p>' +
+    '<div class="kv"><div><b>Statement of purpose</b><span>For every college</span></div><div><b>Interview prep</b><span>Questions and feedback</span></div><div><b>Reminders</b><span>Before each deadline</span></div><div><b>Application manager</b><span>Up to ' + MAX_APPS + ' colleges</span></div></div>' +
+    '<p class="muted" style="font-size:13px">Prototype only. No payment is taken.</p><div style="display:flex;gap:8px"><button class="btn" id="pay">Pay (demo)</button><button class="btn ghost" data-x>Not now</button></div>';
+  b.querySelector('#pay').onclick = function () {
+    b.innerHTML = loadingBody(['Confirming your payment...']);
+    setTimeout(function () {
+      S.paid = true; save();
+      b.innerHTML = '<div class="load"><div style="font-size:44px;color:var(--primary);line-height:1">&#10003;</div><h2 style="margin-top:8px">You are on the paid plan</h2><p class="muted">Everything is unlocked for all your colleges.</p><button class="btn" id="pgo">Continue</button></div>';
+      b.querySelector('#pgo').onclick = function () { closeOv(d); render(); if (done) done(); };
+    }, 1200);
+  };
 }
 function ckList(id) { var det = S.det[id]; return det && det.checklist && det.checklist.length ? det.checklist : DEFAULT_CHECK; }
 function ckKey(c) { return c.kind === 'other' ? 'o:' + c.title : c.kind; }
@@ -497,7 +636,7 @@ function paintChecklist(d, id) {
     var key = ckKey(c), done = !!a.done[key], sop = c.kind === 'sop';
     h += '<div class="cl' + (done ? ' done' : '') + '"><div class="box" data-tg="' + esc(key) + '" style="cursor:pointer">' + (done ? '&#10003;' : '') + '</div><div class="t"><b>' + esc(c.title) + '</b>' + (c.note ? '<span>' + esc(c.note) + '</span>' : '') + '</div>' + (sop ? '<button class="btn sm" data-sop>' + (S.sop[id] ? 'Open draft' : 'Write with Buddy') + '</button>' : '') + '</div>';
   });
-  h += '<div class="cl"><div class="t"><b>Interview prep' + (!S.paid && S.freeId !== id ? '<span class="lock">Paid</span>' : '') + '</b><span>Likely questions for this course and feedback on your answers.</span></div><button class="btn sm" data-iv>Start</button></div>';
+  h += '<div class="cl"><div class="t"><b>Interview prep' + (!S.paid && S.freeId && S.freeId !== id ? '<span class="lock">Paid</span>' : '') + '</b><span>Likely questions for this course and feedback on your answers.</span></div><button class="btn sm" data-iv>Start</button></div>';
   var b = d.querySelector('#cb'); b.innerHTML = h;
   b.querySelector('#ap').onclick = function () { a.applied = !a.applied; save(); paintChecklist(d, id); };
   var ck = b.querySelector('#ck-chk');
@@ -507,20 +646,23 @@ function paintChecklist(d, id) {
   };
   b.querySelectorAll('[data-tg]').forEach(function (x) { x.onclick = function () { var k = x.getAttribute('data-tg'); a.done[k] = !a.done[k]; save(); paintChecklist(d, id); }; });
   var s = b.querySelector('[data-sop]'); if (s) s.onclick = function () { gate(id, function () { openStory(id, 0); }); };
-  b.querySelector('[data-iv]').onclick = function () { gate(id, function () { openInterview(id); }); };
+  b.querySelector('[data-iv]').onclick = function () { gate(id, function () { claimFree(id); openInterview(id); }); };
 }
 
 /* ---------- story and statement of purpose ---------- */
+function storyCount(id) { var n = 0; STORIES.forEach(function (q) { var v = q.k === 'WHY' ? (S.why[id] || '') : (S.story[q.k] || ''); if (String(v).trim()) n++; }); return n; }
 function openStory(id, i) {
-  var p = P(id), q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || '');
-  var d = openOv(head('Your story, step ' + (i + 1) + ' of ' + STORIES.length) + '<div class="sh-body"><div class="steps">' + STORIES.map(function (_, j) { return '<i class="' + (j <= i ? 'on' : '') + '"></i>'; }).join('') + '</div><h2 style="font-size:20px">' + esc(isWhy ? 'Why ' + p.university + ' and this course?' : q.q) + '</h2>' +
+  var p = P(id), q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || ''), last = i === STORIES.length - 1;
+  var d = openOv(head('Your story, step ' + (i + 1) + ' of ' + STORIES.length) + '<div class="sh-body"><div class="skipbar"><span class="muted">Short on time? Skip ahead and see how the draft looks.</span><button class="btn ghost sm" id="skipall">Skip to draft</button></div><div class="steps">' + STORIES.map(function (_, j) { return '<i class="' + (j <= i ? 'on' : '') + '"></i>'; }).join('') + '</div><h2 style="font-size:20px">' + esc(isWhy ? 'Why ' + p.university + ' and this course?' : q.q) + '</h2>' +
     '<div class="hint"><b>How to answer</b>' + esc(q.hint) + '</div><div class="hint" style="border-color:var(--mint)"><b>Why this matters</b>' + esc(q.why) + '</div>' +
     '<textarea id="ans" class="field" placeholder="Write in your own words. Short and honest is fine.">' + esc(val) + '</textarea>' +
-    '<div class="row-end"><button class="btn ghost" id="bk"' + (i === 0 ? ' style="visibility:hidden"' : '') + '>Back</button><button class="btn" id="nx">' + (i === STORIES.length - 1 ? 'Write my draft' : 'Next') + '</button></div></div>');
+    '<div class="row-end"><button class="btn ghost" id="bk"' + (i === 0 ? ' style="visibility:hidden"' : '') + '>Back</button><span style="display:flex;gap:8px"><button class="btn ghost" id="sk">Skip this question</button><button class="btn" id="nx">' + (last ? 'Write my draft' : 'Next') + '</button></span></div></div>');
   wireX(d);
   function keep() { var v = d.querySelector('#ans').value.trim(); if (isWhy) S.why[id] = v; else S.story[q.k] = v; save(); return v; }
   d.querySelector('#bk').onclick = function () { keep(); closeOv(d); openStory(id, i - 1); };
-  d.querySelector('#nx').onclick = function () { var v = keep(); if (!v) { toast('A few words will do'); return; } closeOv(d); if (i === STORIES.length - 1) openDraft(id, true); else openStory(id, i + 1); };
+  d.querySelector('#sk').onclick = function () { keep(); closeOv(d); if (last) openDraft(id, true); else openStory(id, i + 1); };
+  d.querySelector('#skipall').onclick = function () { keep(); closeOv(d); openDraft(id, true); };
+  d.querySelector('#nx').onclick = function () { var v = keep(); if (!v) { toast('A few words will do, or tap Skip this question'); return; } closeOv(d); if (last) openDraft(id, true); else openStory(id, i + 1); };
 }
 function localDraft(id) {
   var p = P(id), s = S.story, w = S.why[id] || '';
@@ -529,12 +671,17 @@ function localDraft(id) {
   parts.forEach(function (x) { var t = (x[0] || '').trim(); if (t) { text.push(t); src.push(x[1]); } });
   return { text: text.join('\n\n'), src: src, plain: true };
 }
+function sampleDraft(id) {
+  var p = P(id), f = S.p.field || 'your field';
+  var t = ['[Describe the moment you first felt drawn to ' + f + '. Say where you were and what you did next.]', '[Describe the project you are proudest of: the problem, what you did yourself, and what changed.]', '[Describe one setback and what you do differently now.]', '[Add one thing you did beyond your classes or your job.]', 'I want to study ' + p.program + ' at ' + p.university + ' because [add one module and one faculty member or lab that interests you]. [Add why you want to study in ' + (p.country || 'this country') + '.]', '[Say where you want to be in 3 years and in 10 years, and what this course adds.]', '[Add one thing about you that your resume does not show.] I would be grateful for the chance to study at ' + p.university + '.'];
+  return { text: t.join('\n\n'), src: [['Q1'], ['Q2'], ['Q3'], ['Q4'], ['WHY', 'Q6'], ['Q5'], ['Q7']], sample: true };
+}
 function openDraft(id, make) {
   var p = P(id), d = openOv(head('Statement of purpose draft') + '<div class="sh-body" id="sb"></div>'); wireX(d);
   var b = d.querySelector('#sb');
   function paint() {
     var s = S.sop[id]; var src = s.src || [];
-    b.innerHTML = (s.plain ? '<div class="notice">Buddy\'s writing helper did not answer, so this draft is your own answers put in order. Edit it, or tap Write again to try the helper once more.</div>' : '') +
+    b.innerHTML = (s.sample ? '<div class="notice">This is a sample so you can see how the draft looks. The brackets show what you would write. Answer the questions to make it yours.</div>' : '') + (s.plain ? '<div class="notice">Buddy\'s writing helper did not answer, so this draft is your own answers put in order. Edit it, or tap Write again to try the helper once more.</div>' : '') +
       '<p class="muted" style="font-size:13px">Built only from your answers. Square brackets mark details Buddy needs from you. Edit freely.</p><textarea id="dt" class="field" style="min-height:360px">' + esc(s.text) + '</textarea>' +
       (src.length ? '<p class="muted" style="font-size:12px">Built from: ' + src.map(function (x, i) { return 'paragraph ' + (i + 1) + ' = ' + (x.join(', ') || 'your answers'); }).join(' | ') + '</p>' : '') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="dl">Download</button><button class="btn ghost" id="cp">Copy</button><button class="btn ghost" id="rg">Write again</button><button class="btn ghost" id="ed">Edit my answers</button></div>';
@@ -545,11 +692,12 @@ function openDraft(id, make) {
     b.querySelector('#ed').onclick = function () { closeOv(d); openStory(id, 0); };
   }
   if (!make && S.sop[id]) return paint();
+  if (make && storyCount(id) === 0) { S.sop[id] = sampleDraft(id); save(); return paint(); }
   b.innerHTML = loadingBody(['Buddy is writing your draft from your answers...', 'Putting your story in order...']);
   var det = S.det[id] || {}, ans = Object.assign({}, S.story, { WHY: S.why[id] || '' });
   api('sop', { profile: S.p, college: { university: p.university, program: p.program, sop_requirement: det.sop_requirement, highlights: det.highlights }, answers: ans })
-    .then(function (r) { S.sop[id] = { text: r.text, src: r.src }; save(); paint(); })
-    .catch(function (e) { S.sop[id] = localDraft(id); save(); paint(); toast(e.message); });
+    .then(function (r) { S.sop[id] = { text: r.text, src: r.src }; save(); paint(); claimFree(id); })
+    .catch(function (e) { S.sop[id] = localDraft(id); save(); paint(); claimFree(id); toast(e.message); });
 }
 
 /* ---------- interview: fixed question bank, model only for feedback ---------- */
@@ -592,10 +740,10 @@ function specificCount() { return QBANK.filter(function (q) { var v = S.p[PKEY[q
 function pushList() {
   var n = specificCount(), t = [3, 5, 6].filter(function (x) { return x <= n && x > S.listAt; }).pop();
   if (!t) return false;
-  var ids = topIds(5); if (!ids.length) return false;
+  var ids = topIds(10); if (!ids.length) return false;
   S.listAt = t;
   if (!S.chat.length) S.chat.push({ role: 'assistant', content: 'Hi ' + first() + '.' });
-  S.chat.push({ role: 'assistant', content: 'You gave me ' + n + ' clear answers, so I made a list for you. These ' + ids.length + ' fit you best right now. Your rows on Home are sorted the same way. Open one to see why it fits.', ids: ids });
+  S.chat.push({ role: 'assistant', content: 'You gave me ' + n + ' clear answers, so I made a list for you. These ' + ids.length + ' fit you best right now. There are many more on Explore, sorted the same way. Tap one to see why it fits.', ids: ids, all: true });
   return true;
 }
 function answerQ(id, val, quiet) {
@@ -654,17 +802,18 @@ function openChat(prefill, full) {
 function chatNext() {
   var nq = nextQ();
   if (S.chatAsked < 3 && nq) { S.chatAsked++; S.chatQ = nq.id; S.chat.push({ role: 'assistant', content: nq.q }); }
-  else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; if (!pushList()) S.chat.push({ role: 'assistant', content: 'Thanks. Here are three to start with. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(3) }); } }
+  else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; if (!pushList()) S.chat.push({ role: 'assistant', content: 'Thanks. Here are a few to start with. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(6), all: true }); } }
   save(); chatPaint();
 }
 function chatPaint() {
   var ms = $('ms'); if (!ms) return;
   ms.innerHTML = S.chat.map(function (m) {
     var cards = (m.ids || []).map(function (id) { var p = P(id); return p ? '<div class="mini" data-open="' + id + '"><b>' + esc(p.program) + '</b><span>' + esc(p.university) + ' | ' + esc(p.country) + '</span></div>' : ''; }).join('');
-    return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + cards + '</div>';
+    return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + cards + (m.all ? '<div style="margin-top:10px"><button class="btn sm" data-seeall>See all matches</button></div>' : '') + '</div>';
   }).join('') + (busy ? '<div class="m b"><span class="typing"><i></i><i></i><i></i></span></div>' : '');
   ms.scrollTop = ms.scrollHeight;
   ms.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
+  ms.querySelectorAll('[data-seeall]').forEach(function (b) { b.onclick = function () { var c = S.p.courseDecided === 'yes' ? catOfCourse(S.p.course) : ''; goExplore(c || '', S.p.countryDecided === 'yes' ? normCountry(S.p.country) : ''); }; });
   var opts = [], q = S.chatQ && qOf(S.chatQ);
   if (!busy) opts = q ? q.opts.concat(['Skip']) : STARTERS;
   $('cc').innerHTML = opts.map(function (o) { return '<button class="chip" data-o="' + esc(o) + '">' + esc(o) + '</button>'; }).join('');
@@ -711,8 +860,26 @@ function nudgeCheck() {
 setInterval(nudgeCheck, 4000);
 window.addEventListener('scroll', function () { if (!nudgeCheck.t) nudgeCheck.t = setTimeout(function () { nudgeCheck.t = 0; nudgeCheck(); }, 800); }, { passive: true });
 
+/* ---------- splash that turns into the Buddy button ---------- */
+function runSplash(sub) {
+  var sp = $('splash'), orb = $('sporb'); if (!sp || !orb) return;
+  if (location.search.indexOf('nosplash') >= 0) return;
+  sp.querySelector('.sp-tag').textContent = sub || 'Your study abroad assistant';
+  sp.className = 'on'; orb.className = 'on'; orb.removeAttribute('style');
+  setTimeout(function () {
+    var l = document.querySelector('#launch i'), r = orb.getBoundingClientRect();
+    if (l && S.step === 'main') {
+      var t = l.getBoundingClientRect();
+      orb.style.animation = 'none'; orb.style.transition = 'transform .85s cubic-bezier(.6,0,.2,1)';
+      orb.style.transform = 'translate(' + (t.left + t.width / 2 - (r.left + r.width / 2)) + 'px,' + (t.top + t.height / 2 - (r.top + r.height / 2)) + 'px) scale(' + (t.width / r.width) + ')';
+    } else { orb.style.animation = 'none'; orb.style.transition = 'transform .6s, opacity .6s'; orb.style.transform = 'scale(.3)'; orb.style.opacity = '0'; }
+    sp.classList.add('out');
+    setTimeout(function () { sp.className = ''; orb.className = ''; orb.removeAttribute('style'); }, 1000);
+  }, 1700);
+}
+
 /* ---------- start ---------- */
-fetch('/api/health').then(function (r) { return r.json(); }).then(function (j) { LIVE = !!j.live; }).catch(function () { LIVE = true; }).then(render);
+fetch('/api/health').then(function (r) { return r.json(); }).then(function (j) { LIVE = !!j.live; }).catch(function () { LIVE = true; }).then(function () { render(); runSplash(); });
 </script>
 </body>
 </html>
