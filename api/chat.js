@@ -19,7 +19,8 @@ module.exports = route(async function (body, req, spend) {
     'Give no fee, deadline, score or ranking numbers. For those, say the student can open the college and tap Check official pages. ' +
     'Never answer only by telling the student to visit a website. Answer first. ' +
     'If you are not sure of a fact, leave it out. Do not invent colleges or programs. ' +
-    'Do not advise on loans, scholarships, funding or visas; say Buddy does not cover them yet. ' +
+    'Do not advise on loans, funding or visas; say Buddy does not cover them yet. ' +
+    'Scholarships are different from funding. If the student mentions scholarships, treat it as a preference for choosing a country or college: say scholarships depend on each college and country, that Buddy does not search or apply for them yet, and name no scheme, amount or deadline. Then still answer the rest of the question. ' +
     'Never suggest a college from NOT INTERESTED. ' + SAFETY + STYLE;
   const ctx = 'Student: ' + [p.degree, p.field, p.courseDecided === 'yes' ? 'wants ' + p.course : 'course not decided', p.countryDecided === 'yes' ? p.country : 'country open', p.marks || p.scoreValue, p.budget, p.priority].filter(Boolean).join(', ') +
     '.\nCOLLEGES SHOWN: ' + (colleges.join(' | ') || 'none') + '\nNOT INTERESTED: ' + (notInterested.join(' | ') || 'none') + '.';

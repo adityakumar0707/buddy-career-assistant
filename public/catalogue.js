@@ -346,6 +346,14 @@ function normCountry(t) {
   return String(t || '').trim();
 }
 
+function countryList(p) {
+  if (!p || p.countryDecided !== 'yes') return [];
+  var out = [];
+  String(p.country || '').split(',').forEach(function (t) { t = normCountry(t); if (t && out.indexOf(t) < 0) out.push(t); });
+  return out.slice(0, 3);
+}
+function joinList(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+
 function scoreProg(pr, p) {
   var s = 0, cn = CN[pr.country] || { cost: 2 }, m = p.marks || '', b = p.budget || '', pri = p.priority || '', w = p.workYears || '';
   if (/Above 80/.test(m)) s += pr.tier === 1 ? 3 : pr.tier === 2 ? 1 : 0;
@@ -377,7 +385,9 @@ function buildRows(p, not, customIds) {
   var fk = fieldKey(p.field), mapped = FIELD_CATS[fk].slice();
   var cat = p.courseDecided === 'yes' ? catOfCourse(p.course) : null;
   var custom = p.courseDecided === 'yes' && !cat;
-  var country = p.countryDecided === 'yes' ? normCountry(p.country) : '';
+  var countries = countryList(p), country = countries.join(',');
+  function inC(x) { return !countries.length || countries.indexOf(x.country) >= 0; }
+  function notC(x) { return !countries.length || countries.indexOf(x.country) < 0; }
   var avail = PLIST.filter(function (x) { return not.indexOf(x.id) < 0; });
   function ofCat(c) { return avail.filter(function (x) { return x.cat === c; }); }
   function ids(l) { return l.map(function (x) { return x.id; }); }
@@ -385,19 +395,19 @@ function buildRows(p, not, customIds) {
 
   function relatedRow(exclude) {
     var cats = mapped.filter(function (c) { return c !== exclude; }), pool = [];
-    var lists = cats.map(function (c) { var l = rankProgs(ofCat(c).filter(function (x) { return !country || x.country === country; }), p); return l.length ? l : rankProgs(ofCat(c), p); });
+    var lists = cats.map(function (c) { var l = rankProgs(ofCat(c).filter(inC), p); return l.length ? l : rankProgs(ofCat(c), p); });
     for (var i = 0; i < 3; i++) lists.forEach(function (l) { if (l[i]) pool.push(l[i]); });
     return { id: 'related', title: 'Related courses for your background', sub: 'Other degrees that suit ' + (FIELD_SHORT[fk] || 'your') + ' graduates', ids: ids(pool).slice(0, 14) };
   }
 
   if (cat) {
-    var a = rankProgs(ofCat(cat).filter(function (x) { return !country || x.country === country; }), p), sub = CATS[cat].label + (country ? ' in ' + country : ' around the world');
-    if (country && a.length < 4) {
-      var more = rankProgs(ofCat(cat).filter(function (x) { return x.country !== country; }), p);
-      a = a.concat(more).slice(0, 14); sub = 'Few ' + CATS[cat].label + ' programs matched ' + country + ', so Buddy added nearby options';
+    var a = rankProgs(ofCat(cat).filter(inC), p), sub = CATS[cat].label + (countries.length ? ' in ' + joinList(countries) : ' around the world');
+    if (countries.length && a.length < 4) {
+      var more = rankProgs(ofCat(cat).filter(notC), p);
+      a = a.concat(more).slice(0, 14); sub = 'Few ' + CATS[cat].label + ' programs matched ' + joinList(countries) + ', so Buddy added nearby options';
     }
     rows.push({ id: 'fit', title: 'Picked for you', sub: sub, ids: ids(a).slice(0, 14) });
-    if (country) rows.push({ id: 'other', title: 'The same course in other countries', sub: CATS[cat].label, ids: ids(rankProgs(ofCat(cat).filter(function (x) { return x.country !== country; }), p)).slice(0, 14) });
+    if (countries.length) rows.push({ id: 'other', title: 'The same course in other countries', sub: CATS[cat].label, ids: ids(rankProgs(ofCat(cat).filter(notC), p)).slice(0, 14) });
     else rows.push({ id: 'cheap', title: 'Lower cost places to study this course', sub: 'Countries that usually cost less overall', ids: ids(rankProgs(ofCat(cat).filter(function (x) { return (CN[x.country] || {}).cost <= 2; }), p)).slice(0, 14) });
     rows.push(relatedRow(cat));
   } else if (custom) {
@@ -405,8 +415,8 @@ function buildRows(p, not, customIds) {
     rows.push(relatedRow(null));
   } else {
     mapped.slice(0, 3).forEach(function (c) {
-      var l = rankProgs(ofCat(c).filter(function (x) { return !country || x.country === country; }), p);
-      if (l.length < 4) l = l.concat(rankProgs(ofCat(c).filter(function (x) { return country && x.country !== country; }), p));
+      var l = rankProgs(ofCat(c).filter(inC), p);
+      if (l.length < 4) l = l.concat(rankProgs(ofCat(c).filter(function (x) { return countries.length && notC(x); }), p));
       rows.push({ id: 'cat-' + c, title: CATS[c].label, sub: CATS[c].pitch, ids: ids(l).slice(0, 14) });
     });
   }

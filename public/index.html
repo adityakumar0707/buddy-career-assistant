@@ -46,6 +46,28 @@ a{color:var(--primary-dark)}
 .field{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;background:#fff;margin:14px 0}
 .field:focus{outline:2px solid var(--mint);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.chip.dim{opacity:.4}
+.opts{display:grid;gap:8px;margin:14px 0}
+.opt{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;color:var(--ink);font-weight:600}
+.opt span{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px}
+.opt:hover{border-color:var(--primary)}
+.opt.on{background:var(--primary);border-color:var(--primary);color:#fff}.opt.on span{color:#ffffffd9}
+.demo{background:#EEF8F4;border:1px solid #CBE9DD;border-radius:var(--r2);padding:9px 13px;font-size:13px;margin:0 0 14px}
+.sample{font-size:13px;color:var(--muted);margin:-6px 0 10px}
+.m .mc{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;white-space:normal}
+.m .mc .chip{padding:7px 13px;font-size:13px}
+.cinput input:disabled{background:#EFEDF3;cursor:not-allowed}
+.gm{background:var(--lav);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.gm-h{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.gm-h h4{margin:0 0 2px}
+.inbox{background:#fff;border:1px solid var(--line);border-radius:var(--r2);margin-top:12px;overflow:hidden}
+.mail{padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.mail:last-child{border:0}
+.mail b{display:block}.mail span{color:var(--muted)}
+.mail.new{background:#FFFBEA;animation:pop .35s ease-out}
+.mail.dim{opacity:.6}
+.mail .tagb{display:inline-block;margin-top:6px;font-size:12px;border-radius:999px;padding:2px 10px;background:#DDF4EA;color:var(--primary-dark);font-weight:600}
+.mail .tagb.wait{background:var(--sun);color:var(--ink)}
 .steps{display:flex;gap:6px;margin-bottom:20px}
 .steps i{height:5px;flex:1;border-radius:9px;background:var(--line)}
 .steps i.on{background:var(--primary)}
@@ -237,7 +259,7 @@ var tab = 'home';
 var ovStack = [];
 
 function fresh() {
-  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatQ: '', chatAsked: 0, chatShown: false, listAt: 0, skipQ: [], nudgeNo: 0, custom: [], customKey: '', gmail: false, cacheKey: '' };
+  return { step: 'welcome', name: '', p: { courseDecided: 'no', countryDecided: 'no' }, obStep: 0, rows: {}, insight: '', progs: {}, det: {}, interested: [], not: [], apps: [], freeId: null, paid: false, story: {}, why: {}, sop: {}, iq: {}, chat: [], chatQ: '', chatAsked: 0, chatShown: false, listAt: 0, skipQ: [], nudgeNo: 0, custom: [], customKey: '', gmail: false, mails: [], demo: false, usedStarters: [], cacheKey: '' };
 }
 function load() { try { var j = JSON.parse(localStorage.getItem(KEY)); return j && j.p ? Object.assign(fresh(), j) : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
@@ -308,23 +330,34 @@ function welcomeV() {
   return '<div class="center"><div class="card"><div class="logo" style="margin-bottom:18px"><i></i>Buddy</div>' +
     '<h1>Get into the right college abroad, with less guesswork.</h1>' +
     '<p class="muted">Buddy helps you choose a course, find colleges that fit, write a statement of purpose that sounds like you, and keep every application on track.</p>' +
-    '<input id="nm" class="field" placeholder="Your first name" maxlength="40" value="' + esc(S.name) + '" autocomplete="given-name">' +
+    '<input id="nm" class="field" placeholder="Your first name" maxlength="40" value="' + esc(S.name || 'Aman') + '" autocomplete="given-name">' +
+    '<p class="sample" style="margin-top:-6px">Demo name filled in. Change it if you like.</p>' +
     '<button class="btn" id="go" style="width:100%">Continue</button>' +
     '<p class="muted" style="font-size:12px;margin:14px 0 0">Prototype. Your answers stay in this browser.</p></div></div>';
 }
 function chipRow(list, sel, cls) { return '<div class="chips">' + list.map(function (x) { return '<button class="chip' + (sel === x ? ' on' : '') + '" data-v="' + esc(x) + '" data-c="' + cls + '">' + esc(x) + '</button>'; }).join('') + '</div>'; }
+function courseOpts(p) {
+  var fk = fieldKey(p.field), cur = p.courseDecided === 'no' ? 'Not decided yet' : p.course;
+  var h = '<div class="opts">' + FIELD_CATS[fk].map(function (c) { var l = CATS[c].label; return '<button class="opt' + (cur === l ? ' on' : '') + '" data-v="' + esc(l) + '" data-c="course">' + esc(l) + '<span>' + esc(CATS[c].pitch) + '</span></button>'; }).join('');
+  return h + '<button class="opt' + (cur === 'Not decided yet' ? ' on' : '') + '" data-v="Not decided yet" data-c="course">Not decided yet<span>Buddy will show the paths that fit your background so you can compare.</span></button></div>';
+}
+function countryChips(p) {
+  var sel = p.countryDecided === 'yes' ? countryList(p) : [], full = sel.length >= 3;
+  return '<div class="chips">' + COUNTRIES.map(function (x) { var on = sel.indexOf(x) >= 0; return '<button class="chip' + (on ? ' on' : (full ? ' dim' : '')) + '" data-v="' + esc(x) + '" data-c="country">' + esc(x) + '</button>'; }).join('') + '<button class="chip' + (p.countryDecided === 'no' ? ' on' : '') + '" data-v="Skip for now" data-c="country">Skip for now</button></div>';
+}
 function onboardV() {
   var s = S.obStep, p = S.p, h = '<div class="center"><div class="card"><div class="steps">' + [0, 1, 2].map(function (i) { return '<i class="' + (i <= s ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+  if (S.demo) h += '<div class="demo">Demo answers are already selected, so you can tap Next. Change anything you like.</div>';
   if (s === 0) {
     h += '<h2>What is your background?</h2><p class="muted">This is the most important thing for finding colleges that suit you.</p>' + chipRow(BACKGROUNDS, p.field, 'bg') +
       '<input id="ofield" class="field" placeholder="Something else? Type your field here" value="' + esc(BACKGROUNDS.indexOf(p.field) < 0 ? (p.field || '') : '') + '" maxlength="80">' +
       '<p class="muted" style="margin:6px 0 0;font-size:13px">Where are you in your studies?</p>' + chipRow(DEGREES, p.degree, 'deg');
   } else if (s === 1) {
-    h += '<h2>Which course do you want for your masters?</h2><p class="muted">Pick one, type your own, or tell us you have not decided. Buddy will help you decide.</p>' + chipRow(COURSES.concat(['Not decided yet']), p.courseDecided === 'no' ? 'Not decided yet' : p.course, 'course') +
-      '<input id="ocourse" class="field" placeholder="Something else? Type the course here" value="' + esc(p.courseDecided === 'yes' && COURSES.indexOf(p.course) < 0 ? p.course : '') + '" maxlength="100">';
+    h += '<h2>Which masters do you want to do?</h2><p class="muted">With a background in ' + esc(p.field || 'your field') + ', these are the common paths. Pick one, type your own, or choose Not decided yet.</p>' + courseOpts(p) +
+      '<input id="ocourse" class="field" placeholder="Something else? Type the course here" value="' + esc(p.courseDecided === 'yes' && catOfCourse(p.course) === null ? p.course : '') + '" maxlength="100">';
   } else {
-    h += '<h2>Which country do you prefer?</h2><p class="muted">You can skip this and Buddy will compare countries for you.</p>' + chipRow(COUNTRIES.concat(['Skip for now']), p.countryDecided === 'no' ? 'Skip for now' : p.country, 'country') +
-      '<input id="ocountry" class="field" placeholder="Another country? Type it here" value="' + esc(p.countryDecided === 'yes' && COUNTRIES.indexOf(p.country) < 0 ? p.country : '') + '" maxlength="60">';
+    h += '<h2>Which countries do you prefer?</h2><p class="muted" style="margin-bottom:4px">You may select multiple countries. Choose up to 3, or skip and Buddy will compare countries for you.</p>' + countryChips(p) +
+      '<input id="ocountry" class="field" placeholder="Another country? Type it here" value="" maxlength="60">';
   }
   h += '<div class="row-end"><button class="btn ghost sm" id="ob-back"' + (s === 0 ? ' style="visibility:hidden"' : '') + '>Back</button><button class="btn" id="ob-next">' + (s === 2 ? 'Show my colleges' : 'Next') + '</button></div></div></div>';
   return h;
@@ -345,7 +378,7 @@ function homeV() {
   var h = '<section class="hero"><div class="hero-grid"><button class="orb" id="orb" aria-label="Talk to Buddy"></button><div style="flex:1">' +
     '<h1>Hi ' + esc(first()) + '. Not sure where to begin?</h1><p>Tell Buddy what is on your mind. It can compare courses, explain a requirement, or help you choose between colleges.</p>' +
     '<div class="ask" id="ask"><span>Ask Buddy anything</span><button class="btn">Talk to Buddy</button></div>' +
-    '<div class="prompts">' + STARTERS.map(function (x) { return '<button data-pr="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div></div></div></section>';
+    (startersLeft().length ? '<div class="prompts">' + startersLeft().map(function (x) { return '<button data-pr="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' : '') + '</div></div></section>';
   var used = {};
   rowsNow().forEach(function (r) {
     var list = r.ids.filter(function (id) { return S.not.indexOf(id) < 0 && !used[id] && P(id); });
@@ -434,6 +467,7 @@ function exploreV() {
     '<div id="exres">' + exRes() + '</div>';
 }
 function exPaint() { var r = $('exres'); if (r) { r.innerHTML = exRes(); bind(); hydrate(); } }
+function oneCountry() { var l = S.p.countryDecided === 'yes' ? countryList(S.p) : []; return l.length === 1 ? l[0] : ''; }
 function goExplore(cat, country) { EX.q = ''; EX.cat = cat || ''; EX.country = country || ''; EX.n = 24; tab = 'explore'; closeChat(); render(); window.scrollTo(0, 0); }
 function rowCat(r) { var c = ''; (r.ids || []).forEach(function (id) { var p = P(id); if (p && p.cat) c = (c === '' ? p.cat : (c === p.cat ? c : '*')); }); return c === '*' ? '' : c; }
 function savedV() {
@@ -442,6 +476,40 @@ function savedV() {
   else h += '<div style="display:flex;flex-wrap:wrap;gap:14px">' + S.interested.map(function (id) { return cardV(id).replace('class="pc"', 'class="pc" style="flex:1 1 272px;max-width:360px"'); }).join('') + '</div>';
   if (S.not.length) h += '<div class="sec"><h3>Hidden</h3><p>Buddy will not suggest these again.</p>' + S.not.map(function (id) { var p = P(id); return p ? '<div class="ap"><div class="i"><h4>' + esc(p.program) + '</h4><span class="muted">' + esc(p.university) + '</span></div><button class="btn ghost sm" data-restore="' + id + '">Bring back</button></div>' : ''; }).join('') + '</div>';
   return h;
+}
+var simBusy = false;
+function gmailV() {
+  var h = '<div class="gm"><div class="gm-h"><div><h4>Gmail</h4><span class="muted" style="font-size:14px">' + (S.gmail ? 'Connected (demo). When a college emails you a confirmation, Buddy marks that application as Applied.' : 'Connect Gmail so Buddy can mark an application as Applied when the college confirmation email arrives.') + '</span></div>' +
+    (S.gmail ? '<span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="gsim"' + (simBusy ? ' disabled' : '') + '>Simulate a confirmation email</button><button class="btn ghost sm" id="gdis">Disconnect</button></span>' : '<button class="btn sm" id="gcon">Connect Gmail (demo)</button>') + '</div>';
+  if (S.gmail) {
+    h += '<div class="inbox">' + (S.mails || []).map(function (m) {
+      var p = P(m.app), tag = m.done ? '<span class="tagb">Buddy marked ' + esc(p ? p.university : 'it') + ' as Applied</span>' : '<span class="tagb wait">Buddy is reading this email...</span>';
+      return '<div class="mail' + (m.done ? '' : ' new') + '"><b>' + esc(m.subj) + '</b><span>' + esc(m.from) + '</span><br>' + tag + '</div>';
+    }).join('') +
+      '<div class="mail dim"><b>Weekly study tips</b><span>Newsletter</span><br><span style="font-size:12px">Not about an application. Buddy skips it.</span></div>' +
+      '<div class="mail dim"><b>Notes from Saturday</b><span>A friend</span><br><span style="font-size:12px">Personal. Buddy skips it.</span></div></div>';
+  }
+  return h + '</div>';
+}
+function openGmailConnect() {
+  var d = openOv(head('Connect Gmail (demo)') + '<div class="sh-body"><p><b>Buddy would like to:</b></p><div class="kv"><div><b>Read</b><span>Emails from colleges about your applications</span></div><div><b>Not do</b><span>Send, delete or change any email</span></div></div><p class="muted" style="font-size:13px">This is a demo. No real Gmail account is opened and nothing is read.</p><div style="display:flex;gap:8px"><button class="btn" id="gallow">Allow</button><button class="btn ghost" data-x>Cancel</button></div></div>', true); wireX(d);
+  d.querySelector('#gallow').onclick = function () { S.gmail = true; save(); closeOv(d); render(); toast('Gmail connected (demo)'); };
+}
+function simMail() {
+  if (simBusy) return;
+  var a = S.apps.filter(function (x) { return !x.applied; })[0];
+  if (!a) {
+    if (S.apps.length) { toast('Every application is already marked Applied'); return; }
+    var id = topIds(1)[0]; if (!id) { toast('Add a college first'); return; }
+    S.apps.push({ id: id, done: {}, applied: false }); a = S.apps[S.apps.length - 1]; toast('Added ' + P(id).university + ' to your applications for this demo');
+  }
+  var p = P(a.id), m = { from: 'Admissions Office, ' + p.university + ' (demo sender)', subj: 'We have received your application: ' + p.program, app: a.id, done: false };
+  S.mails = [m].concat(S.mails || []); simBusy = true; save(); if (tab === 'apps') render();
+  setTimeout(function () {
+    a.applied = true; m.done = true; simBusy = false; save();
+    if (S.step === 'main' && tab === 'apps') render();
+    toast('Buddy matched the email and marked ' + p.university + ' as Applied');
+  }, 1800);
 }
 function appsV() {
   var h = '<div class="sec"><h3>Your applications</h3><p>Up to ' + MAX_APPS + ' colleges, so you apply to fewer and better. Your first full kit is free.</p></div>';
@@ -459,22 +527,29 @@ function appsV() {
     var rem = S.apps.filter(function (a) { return a.remind && !a.applied; }).sort(function (x, y) { return x.remind < y.remind ? -1 : 1; });
     h += '<div class="sec"><h3>Reminders</h3><p>Buddy emails you 7 days and 1 day before each date you set (demo).</p></div>' + (rem.length ? rem.map(function (a) { return '<div class="ap"><div class="i"><b>' + esc(a.remind) + '</b> | ' + esc(P(a.id).university) + '</div></div>'; }).join('') : '<div class="rowerr">No reminders yet. Pick a date on any application above.</div>');
   }
-  h += '<div class="ap" style="background:var(--lav)"><div class="i"><h4>Gmail</h4><span class="muted">' + (S.gmail ? 'Connected (demo). Buddy marks an application as Applied when it sees the confirmation email.' : 'Connect Gmail so Buddy can mark applications as Applied from the confirmation emails you receive.') + '</span></div>' +
-    (S.gmail ? '<button class="btn ghost sm" id="gsim">Simulate a confirmation email</button>' : '<button class="btn sm" id="gcon">Connect (demo)</button>') + '</div>';
+  h += gmailV();
   return h;
 }
 
 /* ---------- bind ---------- */
 function bind() {
   var el;
-  if ((el = $('go'))) el.onclick = function () { var v = $('nm').value.trim(); if (!v) { $('nm').focus(); return; } S.name = v; S.step = 'onboard'; S.obStep = 0; save(); render(); };
+  if ((el = $('go'))) el.onclick = function () { var v = $('nm').value.trim(); if (!v) { $('nm').focus(); return; } S.name = v; S.step = 'onboard'; S.obStep = 0; if (!S.p.field) { S.demo = true; S.p.field = BACKGROUNDS[0]; S.p.degree = DEGREES[1]; S.p.courseDecided = 'yes'; S.p.course = CATS.ds.label; S.p.countryDecided = 'yes'; S.p.countries = ['Germany', 'Ireland', 'Canada']; S.p.country = 'Germany, Ireland, Canada'; } save(); render(); };
   if ((el = $('nm'))) el.onkeydown = function (e) { if (e.key === 'Enter') $('go').click(); };
   document.querySelectorAll('[data-c]').forEach(function (b) {
     b.onclick = function () {
       var v = b.getAttribute('data-v'), c = b.getAttribute('data-c');
-      if (c === 'bg') S.p.field = v; if (c === 'deg') S.p.degree = v;
+      if (c === 'bg') { S.p.field = v; var m = FIELD_CATS[fieldKey(v)]; if (S.p.courseDecided === 'yes' && catOfCourse(S.p.course) && m.indexOf(catOfCourse(S.p.course)) < 0) S.p.course = CATS[m[0]].label; }
+      if (c === 'deg') S.p.degree = v;
       if (c === 'course') { if (v === 'Not decided yet') { S.p.courseDecided = 'no'; S.p.course = ''; } else { S.p.courseDecided = 'yes'; S.p.course = v; } }
-      if (c === 'country') { if (v === 'Skip for now') { S.p.countryDecided = 'no'; S.p.country = ''; } else { S.p.countryDecided = 'yes'; S.p.country = v; } }
+      if (c === 'country') {
+        if (v === 'Skip for now') { S.p.countryDecided = 'no'; S.p.country = ''; S.p.countries = []; }
+        else {
+          var l = S.p.countryDecided === 'yes' ? countryList(S.p) : [], i = l.indexOf(v);
+          if (i >= 0) l.splice(i, 1); else if (l.length < 3) l.push(v); else { toast('You can choose up to 3 countries'); return; }
+          S.p.countries = l; S.p.country = l.join(', '); S.p.countryDecided = l.length ? 'yes' : 'no';
+        }
+      }
       save(); render();
     };
   });
@@ -482,8 +557,8 @@ function bind() {
   if ((el = $('ob-next'))) el.onclick = function () {
     var s = S.obStep, t;
     if (s === 0) { if ((t = $('ofield').value.trim())) S.p.field = t; if (!S.p.field) { toast('Pick your background or type it'); return; } if (!S.p.degree) S.p.degree = DEGREES[0]; }
-    if (s === 1) { if ((t = $('ocourse').value.trim())) { S.p.course = t; S.p.courseDecided = 'yes'; } }
-    if (s === 2) { if ((t = $('ocountry').value.trim())) { S.p.country = t; S.p.countryDecided = 'yes'; } S.step = 'main'; S.rows = {}; S.insight = ''; S.custom = []; S.customKey = ''; customState = ''; tab = 'home'; }
+    if (s === 1) { if ((t = $('ocourse').value.trim())) { S.p.course = t; S.p.courseDecided = 'yes'; } if (S.p.courseDecided === 'yes' && !S.p.course) S.p.courseDecided = 'no'; }
+    if (s === 2) { if ((t = $('ocountry').value.trim())) { var cl = S.p.countryDecided === 'yes' ? countryList(S.p) : []; t = normCountry(t); if (cl.indexOf(t) < 0 && cl.length < 3) cl.push(t); S.p.countries = cl; S.p.country = cl.join(', '); S.p.countryDecided = cl.length ? 'yes' : 'no'; } S.demo = false; S.step = 'main'; S.rows = {}; S.insight = ''; S.custom = []; S.customKey = ''; customState = ''; tab = 'home'; }
     else S.obStep++;
     save(); render(); if (s === 2) runSplash('Finding colleges for you');
   };
@@ -492,7 +567,7 @@ function bind() {
   if ((el = $('orb'))) el.onclick = function () { openChat(undefined, true); };
   if ((el = $('ask'))) el.onclick = function () { openChat(undefined, true); };
   document.querySelectorAll('[data-pr]').forEach(function (b) { b.onclick = function () { openChat(b.getAttribute('data-pr'), true); }; });
-  document.querySelectorAll('[data-all]').forEach(function (b) { b.onclick = function () { goExplore(b.getAttribute('data-all'), S.p.countryDecided === 'yes' ? normCountry(S.p.country) : ''); }; });
+  document.querySelectorAll('[data-all]').forEach(function (b) { b.onclick = function () { goExplore(b.getAttribute('data-all'), oneCountry()); }; });
   document.querySelectorAll('[data-excat]').forEach(function (b) { b.onclick = function () { EX.cat = b.getAttribute('data-excat'); EX.n = 24; render(); }; });
   document.querySelectorAll('[data-excountry]').forEach(function (b) { b.onclick = function () { EX.country = b.getAttribute('data-excountry'); EX.n = 24; render(); }; });
   if ((el = $('exq'))) el.oninput = function () { EX.q = this.value; EX.n = 24; clearTimeout(exPaint.t); exPaint.t = setTimeout(exPaint, 200); };
@@ -505,8 +580,9 @@ function bind() {
   document.querySelectorAll('[data-check]').forEach(function (b) { b.onclick = function () { openChecklist(b.getAttribute('data-check')); }; });
   if ((el = $('upg'))) el.onclick = function () { openCheckout(function () { }); };
   document.querySelectorAll('[data-rem]').forEach(function (inp) { inp.onchange = function () { var a = S.apps.filter(function (x) { return x.id === inp.getAttribute('data-rem'); })[0]; if (a) { a.remind = inp.value; save(); softRender(); toast('Reminder set'); } }; });
-  if ((el = $('gcon'))) el.onclick = function () { S.gmail = true; save(); render(); toast('Gmail connected (demo)'); };
-  if ((el = $('gsim'))) el.onclick = function () { var a = S.apps.filter(function (x) { return !x.applied; })[0]; if (!a) { toast('Nothing left to mark'); return; } a.applied = true; save(); render(); toast('Buddy found a confirmation email and marked ' + P(a.id).university + ' as Applied'); };
+  if ((el = $('gcon'))) el.onclick = openGmailConnect;
+  if ((el = $('gdis'))) el.onclick = function () { S.gmail = false; save(); render(); };
+  if ((el = $('gsim'))) el.onclick = simMail;
 }
 function toggleInt(id) { var i = S.interested.indexOf(id); if (i >= 0) S.interested.splice(i, 1); else { S.interested.push(id); toast('Saved'); } S.not = S.not.filter(function (x) { return x !== id; }); save(); render(); }
 function markNot(id) { if (S.not.indexOf(id) < 0) S.not.push(id); S.interested = S.interested.filter(function (x) { return x !== id; }); save(); closeAll(); render(); toast('Buddy will not suggest this again'); }
@@ -573,7 +649,7 @@ function paintDetail(d, id) {
       '<p class="muted" style="font-size:13px">Deadlines, fees and test rules change every year. Buddy reads the official page only when you ask, so what you see is current.</p>' +
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button class="btn" id="d-chk">Check official pages</button><span class="muted" style="font-size:13px">Takes up to a minute</span></div>';
   }
-  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn' + (det ? '' : ' ghost') + '" id="d-app"' + (inApps ? ' disabled' : '') + '>' + (inApps ? 'In your applications' : 'Start application') + '</button><button class="btn ghost" id="d-int">' + (on ? 'Saved' : 'Interested') + '</button><button class="btn ghost" id="d-not">Not interested</button><button class="btn ghost" id="d-dl">Download research</button></div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn' + (det ? '' : ' ghost') + '" id="d-app"' + '>' + (inApps ? 'Open checklist' : 'Start application') + '</button><button class="btn ghost" id="d-int">' + (on ? 'Saved' : 'Interested') + '</button><button class="btn ghost" id="d-not">Not interested</button><button class="btn ghost" id="d-dl">Download research</button></div>';
   var b = d.querySelector('#db'); b.innerHTML = h;
   wikiFor(p.university, function (w) { var im = b.querySelector('#dimg'), ab = b.querySelector('#dabout'); if (im) paintIm(im, w); if (ab && w && w.ex) ab.textContent = w.ex + ' (Source: Wikipedia)'; });
   var chk = b.querySelector('#d-chk');
@@ -594,8 +670,11 @@ function paintDetail(d, id) {
     download('buddy-' + id + '.txt', clean(t));
   };
   b.querySelector('#d-app').onclick = function () {
-    if (S.apps.length >= MAX_APPS) { toast('You can apply to up to ' + MAX_APPS + ' colleges here'); return; }
-    S.apps.push({ id: id, done: {}, applied: false }); save(); closeOv(d); render(); toast('Added to your applications');
+    if (!inApps) {
+      if (S.apps.length >= MAX_APPS) { toast('You can apply to up to ' + MAX_APPS + ' colleges here'); return; }
+      S.apps.push({ id: id, done: {}, applied: false }); save(); toast('Added to your applications');
+    }
+    closeOv(d); render(); openChecklist(id);
   };
 }
 
@@ -658,18 +737,31 @@ function paintChecklist(d, id) {
 }
 
 /* ---------- story and statement of purpose ---------- */
+var SAMPLE_STORY = {
+  Q1: 'In my second year I helped a family shop near my college move its stock list from a notebook to a spreadsheet. When the numbers showed which items were being thrown away every week, the owner changed what he ordered. I realised I wanted to work on problems like that properly.',
+  Q2: 'My final year project. The problem was that our department wasted hours on manual attendance and marks entry. I built the tool myself over three months, tested it with two teachers, and it cut their weekly paperwork from about four hours to under one.',
+  Q3: 'My first version of that project lost a day of marks because I had not tested saving properly. I told the teachers straight away, restored the data from a backup, and now I test the worst case before I show anything to anyone.',
+  Q4: 'I run a weekend class for school students in my neighbourhood and have taught about 20 of them basic computer skills over two years. I also organised our college technical fest registration desk.',
+  Q5: 'In 3 years I want to work on real problems for a team that uses data to make better decisions. In 10 years I want to lead that kind of work. What I am missing today is formal depth, and this course gives me that.',
+  Q6: 'The best teaching and the most active industry for this field are outside India. I want to learn from people who work on live problems and then bring that skill back and use it here.',
+  Q7: 'I am the first person in my family to study abroad. I look after my younger sister\'s studies in the evening and have kept learning the guitar for six years.',
+  WHY: function (p) { return 'I want to study ' + p.program + ' at ' + p.university + ' because the course teaches the skills I am missing, through projects and not only exams. I also like that the programme works closely with employers in ' + (p.country || 'the country') + '.'; }
+};
+function sampleFor(q, p) { var v = SAMPLE_STORY[q.k]; return typeof v === 'function' ? v(p) : (v || ''); }
+function sampleAnswer(p) { return 'My answer in short: I chose ' + p.program + ' because it matches the work I already enjoy, and ' + p.university + ' is where I can learn it properly. Here is an example: in my final year project I built a tool that saved my teachers hours every week, and I want to take that kind of work further. After the course I plan to work on similar problems and I know what I still need to learn first.'; }
 function storyCount(id) { var n = 0; STORIES.forEach(function (q) { var v = q.k === 'WHY' ? (S.why[id] || '') : (S.story[q.k] || ''); if (String(v).trim()) n++; }); return n; }
 function openStory(id, i) {
-  var p = P(id), q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || ''), last = i === STORIES.length - 1;
+  var p = P(id), q = STORIES[i], isWhy = q.k === 'WHY', val = isWhy ? (S.why[id] || '') : (S.story[q.k] || ''), last = i === STORIES.length - 1, smp = sampleFor(q, p), pre = !String(val).trim();
+  if (pre) val = smp;
   var d = openOv(head('Your story, step ' + (i + 1) + ' of ' + STORIES.length) + '<div class="sh-body"><div class="skipbar"><span class="muted">Short on time? Skip ahead and see how the draft looks.</span><button class="btn ghost sm" id="skipall">Skip to draft</button></div><div class="steps">' + STORIES.map(function (_, j) { return '<i class="' + (j <= i ? 'on' : '') + '"></i>'; }).join('') + '</div><h2 style="font-size:20px">' + esc(isWhy ? 'Why ' + p.university + ' and this course?' : q.q) + '</h2>' +
     '<div class="hint"><b>How to answer</b>' + esc(q.hint) + '</div><div class="hint" style="border-color:var(--mint)"><b>Why this matters</b>' + esc(q.why) + '</div>' +
-    '<textarea id="ans" class="field" placeholder="Write in your own words. Short and honest is fine.">' + esc(val) + '</textarea>' +
+    '<textarea id="ans" class="field" placeholder="Write in your own words. Short and honest is fine.">' + esc(val) + '</textarea>' + (pre ? '<p class="sample">A sample answer is filled in so the demo runs cleanly. Edit it or write your own.</p>' : '') +
     '<div class="row-end"><button class="btn ghost" id="bk"' + (i === 0 ? ' style="visibility:hidden"' : '') + '>Back</button><span style="display:flex;gap:8px"><button class="btn ghost" id="sk">Skip this question</button><button class="btn" id="nx">' + (last ? 'Write my draft' : 'Next') + '</button></span></div></div>');
   wireX(d);
-  function keep() { var v = d.querySelector('#ans').value.trim(); if (isWhy) S.why[id] = v; else S.story[q.k] = v; save(); return v; }
-  d.querySelector('#bk').onclick = function () { keep(); closeOv(d); openStory(id, i - 1); };
-  d.querySelector('#sk').onclick = function () { keep(); closeOv(d); if (last) openDraft(id, true); else openStory(id, i + 1); };
-  d.querySelector('#skipall').onclick = function () { keep(); closeOv(d); openDraft(id, true); };
+  function keep(skip) { var v = d.querySelector('#ans').value.trim(); if (skip && pre && v === smp.trim()) return ''; if (isWhy) S.why[id] = v; else S.story[q.k] = v; save(); return v; }
+  d.querySelector('#bk').onclick = function () { keep(true); closeOv(d); openStory(id, i - 1); };
+  d.querySelector('#sk').onclick = function () { keep(true); closeOv(d); if (last) openDraft(id, true); else openStory(id, i + 1); };
+  d.querySelector('#skipall').onclick = function () { keep(true); closeOv(d); openDraft(id, true); };
   d.querySelector('#nx').onclick = function () { var v = keep(); if (!v) { toast('A few words will do, or tap Skip this question'); return; } closeOv(d); if (last) openDraft(id, true); else openStory(id, i + 1); };
 }
 function localDraft(id) {
@@ -718,7 +810,7 @@ function openInterview(id) {
   }
   function one(i) {
     var q = qs[i];
-    b.innerHTML = '<button class="link" id="bk">All questions</button><h2 style="font-size:19px;margin-top:10px">' + esc(q) + '</h2><textarea id="ia" class="field" placeholder="Answer as you would in the interview."></textarea><button class="btn" id="fb">Get feedback</button><div id="fo" style="margin-top:14px"></div>';
+    b.innerHTML = '<button class="link" id="bk">All questions</button><h2 style="font-size:19px;margin-top:10px">' + esc(q) + '</h2><textarea id="ia" class="field" placeholder="Answer as you would in the interview.">' + esc(sampleAnswer(p)) + '</textarea><p class="sample">A sample answer is filled in so the demo runs cleanly. Edit it or write your own.</p><button class="btn" id="fb">Get feedback</button><div id="fo" style="margin-top:14px"></div>';
     b.querySelector('#bk').onclick = list;
     b.querySelector('#fb').onclick = function () {
       var a = b.querySelector('#ia').value.trim(); if (!a) { toast('Write a few lines first'); return; }
@@ -774,7 +866,12 @@ function staticAnswer(t) {
   }
   if (t === STARTERS[1]) return 'Compare on four things:\n1. What you will study, and whether it matches your goal.\n2. Total yearly cost, including living costs.\n3. Whether your marks and tests fit what they ask for.\n4. Where their graduates work.\nTap Interested on both, open each one, and use Check official pages. Pick the one whose course content fits your goal best.';
   if (t === STARTERS[2]) return 'A strong application has five things:\n1. A clear reason for this course and this college.\n2. A statement of purpose built from your real stories.\n3. Recommendation letters from people who know your work.\n4. Test scores that meet the college rule.\n5. Everything submitted before the deadline.\nOpen Applications and Buddy will build the checklist and help with the statement.';
-  if (/\b(visa|visas|loan|loans|scholarship|scholarships|funding|fund)\b/.test(s)) return 'Buddy does not cover funding or visas yet. For now it helps you choose a course and college, apply, write your statement and prepare for interviews.';
+  if (/\b(visa|visas|loan|loans|funding)\b|education loan|fund my/.test(s)) return 'Buddy does not cover visas or loans yet. For now it helps you choose a course and college, apply, write your statement and prepare for interviews.';
+  if (/scholarship|bursary|financial aid/.test(s)) {
+    var did = !S.p.priority;
+    if (did) { S.p.priority = 'Low cost'; save(); if (S.step === 'main' && tab === 'home') softRender(); }
+    return 'Good to plan for. Scholarships depend on the college and the country, and Buddy cannot search or apply for them yet, so it will not promise any. What it can do is put lower cost places first in your lists' + (did ? ', which I have just done' : '') + '. For each college, tap Check official pages to see what it states about aid.';
+  }
   if (/deadline|fee|fees|tuition|requirement|requirements/.test(s)) return 'Deadlines, fees and requirements change every year. Open any college and tap Check official pages. Buddy reads the official page and shows what it finds, with the source.';
   if (/\b(gre|gmat|ielts|toefl|lsat|pte|test|tests)\b/.test(s)) return 'Test rules differ by college and change often. Open the college, tap Check official pages, and Buddy shows which tests it asks for. You can tell me which test you plan to take and I will use it to sort your lists.';
   if (/\b(sop|statement of purpose)\b/.test(s)) return 'Open Applications, start an application and choose Write with Buddy. It asks you eight short questions with hints, then writes the draft only from your answers.';
@@ -785,7 +882,7 @@ var chatOpen = false, busy = false, nudgeQ = '', lastNudge = Date.now() - 22000,
 function dockOn() {
   var dk = $('dock'); if (dk.firstChild) return;
   dk.innerHTML = '<div id="nudge" class="nudge hide"></div>' +
-    '<div id="panel" class="panel hide"><div class="ph"><span class="logo"><i></i>Buddy</span><span class="grow"><button class="xl" id="pe">Full screen</button><button class="x" id="pc" aria-label="Close chat">x</button></span></div><div class="msgs" id="ms"></div><div class="cchips" id="cc"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="400"><button class="btn" id="cs">Send</button></div></div>' +
+    '<div id="panel" class="panel hide"><div class="ph"><span class="logo"><i></i>Buddy</span><span class="grow"><button class="xl" id="pe">Full screen</button><button class="x" id="pc" aria-label="Close chat">x</button></span></div><div class="msgs" id="ms"></div><div class="cinput"><input id="ci" placeholder="Type a message" maxlength="400"><button class="btn" id="cs">Send</button></div></div>' +
     '<button class="launch" id="launch"><i></i><span>Ask Buddy</span></button>';
   $('launch').onclick = function () { if (chatOpen) closeChat(); else openChat(); };
   $('pc').onclick = closeChat;
@@ -813,25 +910,35 @@ function chatNext() {
   else { S.chatQ = ''; if (!S.chatShown) { S.chatShown = true; if (!pushList()) S.chat.push({ role: 'assistant', content: 'Thanks. Here are a few to start with. Your lists on Home are sorted with your answers. Ask me anything, or keep scrolling and I may ask one more thing.', ids: topIds(6), all: true }); } }
   save(); chatPaint();
 }
+function startersLeft() { return STARTERS.filter(function (x) { return (S.usedStarters || []).indexOf(x) < 0; }); }
+function chatOptions() {
+  if (busy) return [];
+  var q = S.chatQ && qOf(S.chatQ);
+  return q ? q.opts.concat(['Skip']) : startersLeft();
+}
 function chatPaint() {
   var ms = $('ms'); if (!ms) return;
-  ms.innerHTML = S.chat.map(function (m) {
+  var opts = chatOptions(), lastB = -1;
+  S.chat.forEach(function (m, i) { if (m.role !== 'user') lastB = i; });
+  var chipsHtml = opts.length ? '<div class="mc">' + opts.map(function (o) { return '<button class="chip" data-o="' + esc(o) + '">' + esc(o) + '</button>'; }).join('') + '</div>' : '';
+  ms.innerHTML = S.chat.map(function (m, i) {
     var cards = (m.ids || []).map(function (id) { var p = P(id); return p ? '<div class="mini" data-open="' + id + '"><b>' + esc(p.program) + '</b><span>' + esc(p.university) + ' | ' + esc(p.country) + '</span></div>' : ''; }).join('');
-    return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + cards + (m.all ? '<div style="margin-top:10px"><button class="btn sm" data-seeall>See all matches</button></div>' : '') + '</div>';
+    var last = i === S.chat.length - 1 && m.role !== 'user';
+    return '<div class="m ' + (m.role === 'user' ? 'u' : 'b') + '">' + esc(m.content) + cards + (m.all ? '<div style="margin-top:10px"><button class="btn sm" data-seeall>See all matches</button></div>' : '') + (last ? chipsHtml : '') + '</div>';
   }).join('') + (busy ? '<div class="m b"><span class="typing"><i></i><i></i><i></i></span></div>' : '');
   ms.scrollTop = ms.scrollHeight;
   ms.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openDetail(b.getAttribute('data-open')); }; });
-  ms.querySelectorAll('[data-seeall]').forEach(function (b) { b.onclick = function () { var c = S.p.courseDecided === 'yes' ? catOfCourse(S.p.course) : ''; goExplore(c || '', S.p.countryDecided === 'yes' ? normCountry(S.p.country) : ''); }; });
-  var opts = [], q = S.chatQ && qOf(S.chatQ);
-  if (!busy) opts = q ? q.opts.concat(['Skip']) : STARTERS;
-  $('cc').innerHTML = opts.map(function (o) { return '<button class="chip" data-o="' + esc(o) + '">' + esc(o) + '</button>'; }).join('');
-  $('cc').querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-o'); if (S.chatQ) chipAnswer(v); else userSays(v); }; });
+  ms.querySelectorAll('[data-seeall]').forEach(function (b) { b.onclick = function () { var c = S.p.courseDecided === 'yes' ? catOfCourse(S.p.course) : ''; goExplore(c || '', oneCountry()); }; });
+  ms.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-o'); if (S.chatQ) chipAnswer(v); else userSays(v); }; });
+  var ci = $('ci'), cs = $('cs');
+  if (ci) { var off = busy || (chipsHtml !== '' && !!ms.querySelector('[data-o]')); ci.disabled = off; if (cs) cs.disabled = off; ci.placeholder = busy ? 'Buddy is writing...' : (off ? 'Pick one of the options above' : 'Type a message'); }
 }
 function chipAnswer(v) {
   var id = S.chatQ; S.chat.push({ role: 'user', content: v }); answerQ(id, v, true); chatNext();
 }
 function userSays(text) {
   if (busy) return;
+  if (STARTERS.indexOf(text) >= 0 && (S.usedStarters || []).indexOf(text) < 0) S.usedStarters.push(text);
   S.chat.push({ role: 'user', content: text });
   var st = staticAnswer(text);
   if (st) { S.chat.push({ role: 'assistant', content: st }); save(); return chatPaint(); }
